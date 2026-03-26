@@ -1,0 +1,61 @@
+{
+	"pages": [ 
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "首页"
+			}
+		},
+		{
+			"path": "pages/index/devices",
+			"style": {
+				"navigationBarTitleText": "设备"
+			}
+		},
+		{
+			"path": "pages/index/mine",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/index/device-edit",
+			"style": {
+				"navigationBarTitleText": "设备编辑"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#666666",
+		"selectedColor": "#007AFF",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页",
+				"iconPath": "static/icon/indexOFF.png",
+				"selectedIconPath": "static/icon/indexON.png"
+			},
+			{
+				"pagePath": "pages/index/devices",
+				"text": "设备",
+				"iconPath": "static/icon/devicesOFF.png",
+				"selectedIconPath": "static/icon/devicesON.png"
+			},
+			{
+				"pagePath": "pages/index/mine",
+				"text": "我的",
+				"iconPath": "static/icon/mineOFF.png",
+				"selectedIconPath": "static/icon/mineON.png"
+			}
+		]
+	},
+	"uniIdRouter": {}
+}

@@ -1,0 +1,12 @@
+{
+  "name": "smart-agriculture-cloud-function",
+  "version": "1.0.0",
+  "description": "智慧农业腾讯云函数",
+  "main": "cloudbase.js",
+  "dependencies": {
+    "mysql2": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
