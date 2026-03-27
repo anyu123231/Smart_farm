@@ -221,7 +221,7 @@
 		border-radius: 25rpx;
 		font-size: 28rpx;
 		font-weight: 600;
-		transition: all 0.3s ease;
+		transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 		box-shadow: 0 4rpx 12rpx rgba(76, 175, 80, 0.3);
 	}
 
@@ -253,7 +253,7 @@
 		margin-bottom: 20rpx;
 		border: 3rpx solid #4CAF50;
 		box-shadow: 0 5rpx 15rpx rgba(0, 0, 0, 0.1);
-		transition: transform 0.3s ease;
+		transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	}
 
 	.avatar:hover {
@@ -290,7 +290,7 @@
 		align-items: center;
 		padding: 30rpx;
 		border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-		transition: all 0.3s ease;
+		transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 		position: relative;
 		overflow: hidden;
 	}
@@ -322,7 +322,7 @@
 		font-size: 32rpx;
 		color: #999999;
 		z-index: 1;
-		transition: transform 0.3s ease;
+		transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	}
 
 	.menu-item:active .menu-arrow {

@@ -128,7 +128,7 @@
 		border-radius: 20rpx;
 		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 		z-index: 100;
-		transition: all 0.3s ease;
+		transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	}
 
 	.scan-button:active {
@@ -157,7 +157,7 @@
 		margin-bottom: 50rpx;
 		border-radius: 40rpx;
 		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
-		transition: transform 0.3s ease;
+		transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	}
 
 	.logo:hover {

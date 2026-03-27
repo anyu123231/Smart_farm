@@ -169,7 +169,7 @@ export default {
 	flex-direction: column;
 	align-items: center;
 	backdrop-filter: blur(10rpx);
-	transition: transform 0.3s ease, box-shadow 0.3s ease;
+	transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .login-card:hover {
@@ -184,7 +184,7 @@ export default {
 	border-radius: 80rpx;
 	margin-bottom: 30rpx;
 	box-shadow: 0 5rpx 15rpx rgba(0, 0, 0, 0.1);
-	transition: transform 0.3s ease;
+	transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .app-logo:hover {
@@ -229,7 +229,7 @@ export default {
 	height: 80rpx;
 	border: 1rpx solid #e0e0e0;
 	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .input-wrapper:focus-within {
@@ -270,7 +270,7 @@ export default {
 	margin-top: 20rpx;
 	margin-bottom: 20rpx;
 	box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .login-button:active {
@@ -288,7 +288,7 @@ export default {
 	font-weight: bold;
 	border-radius: 20rpx;
 	border: 1rpx solid #007AFF;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .register-button:active {

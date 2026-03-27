@@ -241,7 +241,7 @@ export default {
 	font-size: 28rpx;
 	color: #333333;
 	box-sizing: border-box;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -275,7 +275,7 @@ export default {
 	border-radius: 45rpx;
 	border: none;
 	box-shadow: 0 6rpx 18rpx rgba(0, 122, 255, 0.4);
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .connect-button:active {

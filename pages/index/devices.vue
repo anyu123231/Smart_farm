@@ -438,7 +438,7 @@ export default {
 	margin-bottom: 30rpx;
 	box-sizing: border-box;
 	backdrop-filter: blur(10rpx);
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .card:hover {
@@ -480,7 +480,7 @@ export default {
 	justify-content: center;
 	align-items: center;
 	margin-right: 10rpx;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	border-radius: 20rpx;
 	padding: 5rpx 10rpx;
 }
@@ -505,7 +505,7 @@ export default {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	border-radius: 20rpx;
 	padding: 5rpx 10rpx;
 }
@@ -560,7 +560,7 @@ export default {
 	background-color: #e0e0e0;
 	border-radius: 30rpx;
 	position: relative;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	cursor: pointer;
 	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
@@ -580,7 +580,7 @@ export default {
 	position: absolute;
 	top: 4rpx;
 	left: 4rpx;
-	transition: all 0.3s ease;
+	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.2);
 }
 
