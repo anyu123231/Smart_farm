@@ -23,6 +23,12 @@
 			"style": {
 				"navigationBarTitleText": "设备编辑"
 			}
+		},
+		{
+			"path": "pages/index/login",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
 		}
 	],
 	"globalStyle": {

@@ -1,23 +1,44 @@
 <template>
 	<view class="content">
+		<!-- 顶部退出按钮（仅登录状态显示） -->
+		<view v-if="isLoggedIn" class="header">
+			<view class="login-btn" @click="handleLoginLogout">
+				<text class="login-text">退出</text>
+			</view>
+		</view>
+		
 		<view class="user-info">
-			<image class="avatar" src="/static/logo.png"></image>
-			<text class="username">用户名称</text>
+			<image class="avatar" :src="avatar || '/static/logo.png'"></image>
+			<!-- 未登录时显示登录按钮，登录时显示用户名 -->
+			<view v-if="!isLoggedIn" class="login-btn user-login-btn" @click="handleLoginLogout">
+				<text class="login-text">登录</text>
+			</view>
+			<text v-else class="username">{{ username }}</text>
 		</view>
 		<view class="menu-list">
-			<view class="menu-item" v-for="(item, index) in menuList" :key="index">
+			<view class="menu-item" v-for="(item, index) in menuList" :key="index" @click="handleMenuClick(item)">
 				<text class="menu-icon">{{ item.icon }}</text>
 				<text class="menu-text">{{ item.text }}</text>
 				<text class="menu-arrow">></text>
 			</view>
 		</view>
+		
+
 	</view>
 </template>
 
 <script>
+	// 导入 TabBar 组件
+	import TabBar from '../components/TabBar.vue'
 	export default {
+		components: {
+			TabBar // 注册 TabBar 组件
+		},
 		data() {
 			return {
+				isLoggedIn: false, // 登录状态
+				username: '', // 用户名
+				avatar: '', // 头像
 				menuList: [
 					{
 						icon: '⚙️',
@@ -38,15 +59,137 @@
 					{
 						icon: 'ℹ️',
 						text: '关于我们'
+					},
+					{
+						icon: '🚪',
+						text: '注销'
 					}
 				]
 			}
 		},
 		onLoad() {
-
+			// 页面加载时检查登录状态
+			this.checkLoginStatus();
+		},
+		onShow() {
+			// 页面显示时检查登录状态，确保登录后信息更新
+			this.checkLoginStatus();
 		},
 		methods: {
-
+			// 检查登录状态
+			checkLoginStatus() {
+				const token = uni.getStorageSync('token');
+				const user = uni.getStorageSync('userInfo');
+				if (token && user) {
+					this.isLoggedIn = true;
+					this.username = user.username;
+					this.avatar = user.avatar;
+				} else {
+					this.isLoggedIn = false;
+					this.username = '';
+					this.avatar = '';
+				}
+			},
+			
+			// 处理登录/退出点击
+			handleLoginLogout() {
+				if (!this.isLoggedIn) {
+					// 未登录，跳转到登录页面
+					uni.navigateTo({
+						url: '/pages/index/login'
+					});
+				} else {
+					// 已登录，退出登录
+					uni.showModal({
+						title: '退出确认',
+						content: '确定要退出登录吗？',
+						confirmText: '确定',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								// 清除本地存储
+								uni.removeStorageSync('token');
+								uni.removeStorageSync('userInfo');
+								this.isLoggedIn = false;
+								this.username = '';
+								this.avatar = '';
+								uni.showToast({
+									title: '退出成功',
+									icon: 'success'
+								});
+							}
+						}
+					});
+				}
+			},
+			
+			// 处理菜单点击
+			handleMenuClick(item) {
+				if (item.text === '注销') {
+					// 提示用户确认注销
+					uni.showModal({
+						title: '注销确认',
+						content: '确定要注销并删除账户吗？',
+						confirmText: '确定',
+						cancelText: '取消',
+						success: (res) => {
+							if (res.confirm) {
+								// 调用注销API
+								this.logout();
+							}
+						}
+					});
+				} else if (item.text === '设置') {
+					// 跳转到设置页面
+					// 这里可以添加设置页面的跳转逻辑
+				}
+			},
+			
+			// 注销并删除用户
+			logout() {
+				const token = uni.getStorageSync('token');
+				if (!token) {
+					uni.showToast({
+						title: '未登录',
+						icon: 'none'
+					});
+					return;
+				}
+				
+				// 调用注销API
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/user/delete',
+					method: 'DELETE',
+					header: {
+						'Authorization': `Bearer ${token}`
+					},
+					success: (res) => {
+						if (res.data.code === 200) {
+							// 清除本地存储
+							uni.removeStorageSync('token');
+							uni.removeStorageSync('userInfo');
+							this.isLoggedIn = false;
+							this.username = '';
+							this.avatar = '';
+							uni.showToast({
+								title: '注销成功',
+								icon: 'success'
+							});
+						} else {
+							uni.showToast({
+								title: res.data.message || '注销失败',
+								icon: 'none'
+							});
+						}
+					},
+					fail: (err) => {
+						uni.showToast({
+							title: '网络错误',
+							icon: 'none'
+						});
+					}
+				});
+			}
 		}
 	}
 </script>
@@ -58,6 +201,33 @@
 		min-height: 100vh;
 		background-color: #f5f5f5;
 		padding-bottom: 120rpx;
+	}
+
+	.header {
+		padding: 20rpx;
+		background-color: #ffffff;
+		text-align: left;
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+	}
+
+	.login-btn {
+		display: inline-block;
+		padding: 10rpx 20rpx;
+		background-color: #4CAF50;
+		color: white;
+		border-radius: 20rpx;
+		font-size: 28rpx;
+		transition: background-color 0.3s ease;
+	}
+
+	.login-btn:active {
+		background-color: #45a049;
+	}
+
+	.login-text {
+		font-size: 28rpx;
 	}
 
 	.user-info {
@@ -81,6 +251,13 @@
 		font-size: 36rpx;
 		color: #333333;
 		font-weight: bold;
+	}
+
+	/* 用户名称位置的登录按钮样式 */
+	.user-login-btn {
+		margin-top: 20rpx;
+		padding: 15rpx 40rpx;
+		font-size: 32rpx;
 	}
 
 	.menu-list {

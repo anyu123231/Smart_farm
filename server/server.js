@@ -2,6 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const mysql = require('mysql2/promise')
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 
 // 创建 Express 应用
 const app = express()
@@ -28,6 +29,10 @@ const dbConfig = {
 // 创建数据库连接池
 const pool = mysql.createPool(dbConfig)
 
+// JWT配置
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'
+
 // 健康检查接口
 app.get('/health', (req, res) => {
 	res.json({
@@ -37,11 +42,192 @@ app.get('/health', (req, res) => {
 	})
 })
 
+// 验证JWT中间件
+const verifyToken = async (req, res, next) => {
+	try {
+		const authHeader = req.headers.authorization
+		if (!authHeader || !authHeader.startsWith('Bearer ')) {
+			return res.status(401).json({
+				code: 401,
+				message: '未提供认证令牌'
+			})
+		}
+		
+		const token = authHeader.split(' ')[1]
+		const decoded = jwt.verify(token, JWT_SECRET)
+		req.user = decoded
+		next()
+	} catch (error) {
+		return res.status(401).json({
+			code: 401,
+			message: '无效的认证令牌'
+		})
+	}
+}
+
+// 登录接口
+app.post('/api/user/login', async (req, res) => {
+	try {
+		const { username, password } = req.body
+		
+		if (!username || !password) {
+			return res.status(400).json({
+				code: 400,
+				message: '缺少必要参数'
+			})
+		}
+		
+		// 查询用户
+		const [rows] = await pool.query(
+			'SELECT id, username, password FROM users WHERE username = ?',
+			[username]
+		)
+		
+		if (rows.length === 0) {
+			return res.status(401).json({
+				code: 401,
+				message: '用户名或密码错误'
+			})
+		}
+		
+		const user = rows[0]
+		
+		// 验证密码（实际应用中应该使用bcrypt加密）
+		if (password !== user.password) {
+			return res.status(401).json({
+				code: 401,
+				message: '用户名或密码错误'
+			})
+		}
+		
+		// 生成JWT令牌
+		const token = jwt.sign(
+			{ id: user.id, username: user.username },
+			JWT_SECRET,
+			{ expiresIn: JWT_EXPIRES_IN }
+		)
+		
+		res.json({
+			code: 200,
+			message: '登录成功',
+			data: {
+				id: user.id,
+				username: user.username
+			},
+			token
+		})
+	} catch (error) {
+		console.error('登录失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 注册接口
+app.post('/api/user/register', async (req, res) => {
+	try {
+		const { username, password } = req.body
+		
+		if (!username || !password) {
+			return res.status(400).json({
+				code: 400,
+				message: '缺少必要参数'
+			})
+		}
+		
+		// 检查用户名是否已存在
+		const [existing] = await pool.query(
+			'SELECT id FROM users WHERE username = ?',
+			[username]
+		)
+		
+		if (existing.length > 0) {
+			return res.status(409).json({
+				code: 409,
+				message: '用户名已存在'
+			})
+		}
+		
+		// 插入新用户
+		const [result] = await pool.query(
+			'INSERT INTO users (username, password, created_at, updated_at) VALUES (?, ?, NOW(), NOW())',
+			[username, password]
+		)
+		
+		res.json({
+			code: 200,
+			message: '注册成功',
+			data: {
+				id: result.insertId,
+				username
+			}
+		})
+	} catch (error) {
+		console.error('注册失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 删除用户接口
+app.delete('/api/user/delete', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		
+		// 开始事务
+		const connection = await pool.getConnection()
+		await connection.beginTransaction()
+		
+		try {
+			// 删除用户的所有设备
+			await connection.query('DELETE FROM devices WHERE user_id = ?', [userId])
+			
+			// 删除用户
+			const [result] = await connection.query('DELETE FROM users WHERE id = ?', [userId])
+			
+			// 提交事务
+			await connection.commit()
+			
+			if (result.affectedRows === 0) {
+				return res.status(404).json({
+					code: 404,
+					message: '用户不存在'
+				})
+			}
+			
+			res.json({
+				code: 200,
+				message: '用户删除成功'
+			})
+		} catch (error) {
+			// 回滚事务
+			await connection.rollback()
+			throw error
+		} finally {
+			connection.release()
+		}
+	} catch (error) {
+		console.error('删除用户失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
 // 获取所有设备列表（支持单数和复数路径）
-app.get('/api/device', async (req, res) => {
+app.get('/api/device', verifyToken, async (req, res) => {
 	try {
 		const [rows] = await pool.query(
-			'SELECT id, name, topic, uid, status, createAt FROM devices ORDER BY createAt DESC'
+			'SELECT id, name, topic, uid, status, createAt FROM devices WHERE user_id = ? ORDER BY createAt DESC',
+			[req.user.id]
 		)
 		res.json({
 			code: 200,
@@ -59,11 +245,12 @@ app.get('/api/device', async (req, res) => {
 })
 
 // 创建新设备
-app.post('/api/device', async (req, res) => {
+app.post('/api/device', verifyToken, async (req, res) => {
 	try {
 		const { name, topic, uid, _openid, status } = req.body
+		const userId = req.user.id
 		
-		console.log('收到创建设备请求:', { name, topic, uid, _openid, status })
+		console.log('收到创建设备请求:', { name, topic, uid, _openid, status, userId })
 		
 		if (!name || !topic || !uid || !_openid) {
 			return res.status(400).json({
@@ -91,8 +278,8 @@ app.post('/api/device', async (req, res) => {
 		
 		console.log('_openid不存在，开始创建设备')
 		const [result] = await pool.query(
-			'INSERT INTO devices (name, topic, uid, _openid, status, createAt) VALUES (?, ?, ?, ?, ?, NOW())',
-			[name, topic, uid, _openid, status || 0]
+			'INSERT INTO devices (name, topic, uid, _openid, status, user_id, createAt) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+			[name, topic, uid, _openid, status || 0, userId]
 		)
 		
 		console.log('设备创建成功，ID:', result.insertId)
@@ -106,7 +293,8 @@ app.post('/api/device', async (req, res) => {
 				topic,
 				uid,
 				_openid,
-				status: status || 0
+				status: status || 0,
+				user_id: userId
 			}
 		})
 	} catch (error) {
@@ -120,12 +308,13 @@ app.post('/api/device', async (req, res) => {
 })
 
 // 获取用户设备列表
-app.get('/api/devices/user', async (req, res) => {
+app.get('/api/devices/user', verifyToken, async (req, res) => {
 	try {
 		const { openid } = req.query
+		const userId = req.user.id
 		const [rows] = await pool.query(
-			'SELECT id, name, topic, uid, status, createAt FROM devices WHERE _openid = ? ORDER BY createAt DESC',
-			[openid]
+			'SELECT id, name, topic, uid, status, createAt FROM devices WHERE _openid = ? AND user_id = ? ORDER BY createAt DESC',
+			[openid, userId]
 		)
 		res.json({
 			code: 200,
@@ -143,12 +332,27 @@ app.get('/api/devices/user', async (req, res) => {
 })
 
 // 更新设备状态
-app.put('/api/device/status', async (req, res) => {
+app.put('/api/device/status', verifyToken, async (req, res) => {
 	try {
 		const { id, status } = req.body
+		const userId = req.user.id
+		
+		// 检查设备是否属于该用户
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
 		const [result] = await pool.query(
-			'UPDATE devices SET status = ? WHERE id = ?',
-			[status, id]
+			'UPDATE devices SET status = ? WHERE id = ? AND user_id = ?',
+			[status, id, userId]
 		)
 		
 		if (result.affectedRows === 0) {
@@ -173,10 +377,25 @@ app.put('/api/device/status', async (req, res) => {
 })
 
 // 删除设备
-app.delete('/api/device', async (req, res) => {
+app.delete('/api/device', verifyToken, async (req, res) => {
 	try {
 		const { id } = req.query
-		const [result] = await pool.query('DELETE FROM devices WHERE id = ?', [id])
+		const userId = req.user.id
+		
+		// 检查设备是否属于该用户
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const [result] = await pool.query('DELETE FROM devices WHERE id = ? AND user_id = ?', [id, userId])
 		
 		if (result.affectedRows === 0) {
 			return res.status(404).json({

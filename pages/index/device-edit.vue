@@ -69,6 +69,9 @@ export default {
 		}
 	},
 	onLoad(options) {
+		// 检查登录状态
+		this.checkLoginStatus();
+		
 		// 获取传递过来的设备信息
 		if (options.data) {
 			try {
@@ -90,6 +93,21 @@ export default {
 		}
 	},
 	methods: {
+		// 检查登录状态
+		checkLoginStatus() {
+			const token = uni.getStorageSync('token');
+			if (!token) {
+				uni.showToast({
+					title: '请先登录',
+					icon: 'none'
+				});
+				setTimeout(() => {
+					uni.navigateTo({
+						url: '/pages/index/login'
+					});
+				}, 1000);
+			}
+		},
 		// 连接设备（保存到数据库）
 		connectDevice() {
 			// 验证必填字段
@@ -108,11 +126,15 @@ export default {
 		saveDeviceToDatabase() {
 			console.log('准备保存设备:', this.deviceInfo)
 			
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
 			uni.request({
 				url: 'http://175.24.203.151:3000/api/device',
 				method: 'POST',
 				header: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
 				},
 				data: {
 					name: this.deviceInfo.name,

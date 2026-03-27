@@ -1,36 +1,50 @@
 <template>
 	<!-- 页面根容器 -->
 	<view class="content">
+		<!-- 未登录提示 -->
+		<view v-if="!isLoggedIn" class="login-tip">
+			<text class="login-tip-text">请先登录后查看设备信息</text>
+			<button class="login-button" @click="goToLogin">去登录</button>
+		</view>
+		
 		<!-- 设备卡片列表 -->
-		<view 
-			class="card" 
-			v-for="device in deviceList"
-			:key="device.id"
-		>
-			<!-- 卡片标题区域 -->
-			<view class="card-header">
-				<text class="card-title">{{ device.name }}</text>
-				<!-- 删除按钮 -->
-				<view class="delete-button" @click="deleteDevice(device.id)">
-					<text class="delete-icon">删除</text>
+		<view v-else class="device-list">
+			<!-- 无设备提示 -->
+			<view v-if="deviceList.length === 0" class="no-device">
+				<text class="no-device-text">暂无设备。请添加设备</text>
+			</view>
+			
+			<!-- 设备卡片 -->
+			<view 
+				class="card" 
+				v-for="device in deviceList"
+				:key="device.id"
+			>
+				<!-- 卡片标题区域 -->
+				<view class="card-header">
+					<text class="card-title">{{ device.name }}</text>
+					<!-- 删除按钮 -->
+					<view class="delete-button" @click="deleteDevice(device.id)">
+						<text class="delete-icon">删除</text>
+					</view>
 				</view>
-			</view>
-			<!-- 设备信息小字 -->
-			<view class="device-info">
-				<text class="info-text">主题: {{ device.topic }}</text>
-				<text class="info-text">UID: {{ device.uid }}</text>
-				<text class="info-text">创建时间: {{ formatTime(device.createAt) }}</text>
-			</view>
-			<!-- 开关容器 -->
-			<view class="switch-container">
-				<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
-				<view 
-					class="switch" 
-					:class="{ active: device.status === 1 }" 
-					@click="toggleSwitch(device)"
-				>
-					<!-- 开关圆形滑块 -->
-					<view class="switch-circle"></view>
+				<!-- 设备信息小字 -->
+				<view class="device-info">
+					<text class="info-text">主题: {{ device.topic }}</text>
+					<text class="info-text">UID: {{ device.uid }}</text>
+					<text class="info-text">创建时间: {{ formatTime(device.createAt) }}</text>
+				</view>
+				<!-- 开关容器 -->
+				<view class="switch-container">
+					<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
+					<view 
+						class="switch" 
+						:class="{ active: device.status === 1 }" 
+						@click="toggleSwitch(device)"
+					>
+						<!-- 开关圆形滑块 -->
+						<view class="switch-circle"></view>
+					</view>
 				</view>
 			</view>
 		</view>
@@ -45,29 +59,63 @@ export default {
 	data() {
 		return {
 			// 设备列表数据
-			deviceList: []
+			deviceList: [],
+			// 是否已登录
+			isLoggedIn: false,
+			// 用户信息
+			userInfo: {}
 		}
 	},
 	// 页面加载生命周期钩子
 	onLoad() {
-		// 页面加载时获取设备列表
-		this.fetchDeviceList()
+		// 检查登录状态
+		this.checkLoginStatus()
 	},
 	// 页面显示生命周期钩子
 	onShow() {
-		// 每次显示页面时获取设备列表（确保数据最新）
-		this.fetchDeviceList()
+		// 检查登录状态
+		this.checkLoginStatus()
 	},
 	// 方法定义
 	methods: {
+		// 检查登录状态
+		checkLoginStatus() {
+			// 从本地存储获取用户信息
+			const userInfo = uni.getStorageSync('userInfo');
+			const token = uni.getStorageSync('token');
+			
+			// 判断是否已登录
+			if (userInfo && token) {
+				this.userInfo = userInfo;
+				this.isLoggedIn = true;
+				// 获取设备列表
+				this.fetchDeviceList();
+			} else {
+				this.userInfo = {};
+				this.isLoggedIn = false;
+				this.deviceList = [];
+			}
+		},
+		
+		// 跳转到登录页面
+		goToLogin() {
+			uni.navigateTo({
+				url: '/pages/index/login'
+			});
+		},
+		
 		// 获取设备列表数据
 		fetchDeviceList() {
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
 			// 发送 HTTP 请求到云服务器 API 获取设备列表
 			uni.request({
 				url: 'http://175.24.203.151:3000/api/device',
 				method: 'GET',
 				header: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
 				},
 				success: (res) => {
 					// 添加调试日志
@@ -118,12 +166,16 @@ export default {
 		},
 	// 更新数据库中的设备状态
 		updateDeviceStatusInDB(deviceId, newStatus) {
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
 			return new Promise((resolve, reject) => {
 				uni.request({
 					url: 'http://175.24.203.151:3000/api/device/status',
 					method: 'PUT',
 					header: {
-						'Content-Type': 'application/json'
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
 					},
 					data: {
 						id: deviceId,
@@ -193,11 +245,15 @@ export default {
 		},
 		// 从数据库删除设备
 		deleteDeviceFromDatabase(deviceId) {
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
 			uni.request({
 				url: `http://175.24.203.151:3000/api/device?id=${deviceId}`,
 				method: 'DELETE',
 				header: {
-					'Content-Type': 'application/json'
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
 				},
 				success: (res) => {
 					if (res.data && res.data.code === 200) {
@@ -243,14 +299,50 @@ export default {
 /* 页面根容器样式 */
 .content {
 	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	justify-content: space-between;
-	align-items: flex-start;
+	flex-direction: column;
 	min-height: 100vh;
 	background-color: #f5f5f5;
 	padding: 20rpx;
 	padding-bottom: 120rpx;
+}
+
+/* 未登录提示样式 */
+.login-tip {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: #ffffff;
+	border-radius: 20rpx;
+	padding: 60rpx 40rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	margin-top: 100rpx;
+}
+
+.login-tip-text {
+	font-size: 32rpx;
+	color: #333333;
+	margin-bottom: 30rpx;
+	text-align: center;
+}
+
+.login-button {
+	width: 200rpx;
+	height: 60rpx;
+	background-color: #007AFF;
+	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 500;
+	border-radius: 30rpx;
+}
+
+/* 设备列表容器 */
+.device-list {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: space-between;
+	align-items: flex-start;
 }
 
 /* 卡片容器样式 */
@@ -359,7 +451,26 @@ export default {
 }
 
 /* 开关激活状态下圆形滑块位置 */
-.switch.active .switch-circle {
-	left: 64rpx;
-}
+	.switch.active .switch-circle {
+		left: 64rpx;
+	}
+
+	/* 无设备提示样式 */
+	.no-device {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		height: 400rpx;
+		background-color: #ffffff;
+		border-radius: 20rpx;
+		margin-top: 20rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	}
+
+	.no-device-text {
+		font-size: 32rpx;
+		color: #999999;
+		text-align: center;
+	}
 </style>
