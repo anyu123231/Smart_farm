@@ -199,31 +199,35 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 100vh;
-		background-color: #f5f5f5;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		padding-bottom: 120rpx;
 	}
 
 	.header {
 		padding: 20rpx;
-		background-color: #ffffff;
+		background-color: rgba(255, 255, 255, 0.9);
 		text-align: left;
 		display: flex;
 		justify-content: flex-start;
 		align-items: center;
+		backdrop-filter: blur(10rpx);
 	}
 
 	.login-btn {
 		display: inline-block;
-		padding: 10rpx 20rpx;
-		background-color: #4CAF50;
+		padding: 12rpx 24rpx;
+		background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
 		color: white;
-		border-radius: 20rpx;
+		border-radius: 25rpx;
 		font-size: 28rpx;
-		transition: background-color 0.3s ease;
+		font-weight: 600;
+		transition: all 0.3s ease;
+		box-shadow: 0 4rpx 12rpx rgba(76, 175, 80, 0.3);
 	}
 
 	.login-btn:active {
-		background-color: #45a049;
+		transform: scale(0.95);
+		box-shadow: 0 2rpx 6rpx rgba(76, 175, 80, 0.3);
 	}
 
 	.login-text {
@@ -235,8 +239,11 @@
 		flex-direction: column;
 		align-items: center;
 		padding: 60rpx 0;
-		background-color: #ffffff;
-		margin-bottom: 20rpx;
+		background-color: rgba(255, 255, 255, 0.95);
+		margin: 20rpx;
+		border-radius: 30rpx;
+		backdrop-filter: blur(10rpx);
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.avatar {
@@ -244,13 +251,20 @@
 		height: 120rpx;
 		border-radius: 60rpx;
 		margin-bottom: 20rpx;
-		border: 2rpx solid #e0e0e0;
+		border: 3rpx solid #4CAF50;
+		box-shadow: 0 5rpx 15rpx rgba(0, 0, 0, 0.1);
+		transition: transform 0.3s ease;
+	}
+
+	.avatar:hover {
+		transform: scale(1.1);
 	}
 
 	.username {
 		font-size: 36rpx;
 		color: #333333;
-		font-weight: bold;
+		font-weight: 700;
+		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 	}
 
 	/* 用户名称位置的登录按钮样式 */
@@ -263,15 +277,22 @@
 	.menu-list {
 		display: flex;
 		flex-direction: column;
-		background-color: #ffffff;
+		background-color: rgba(255, 255, 255, 0.95);
+		margin: 0 20rpx;
+		border-radius: 30rpx;
+		backdrop-filter: blur(10rpx);
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+		overflow: hidden;
 	}
 
 	.menu-item {
 		display: flex;
 		align-items: center;
 		padding: 30rpx;
-		border-bottom: 1rpx solid #f0f0f0;
-		transition: background-color 0.3s ease;
+		border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+		transition: all 0.3s ease;
+		position: relative;
+		overflow: hidden;
 	}
 
 	.menu-item:last-child {
@@ -279,22 +300,32 @@
 	}
 
 	.menu-item:active {
-		background-color: #f5f5f5;
+		background-color: rgba(0, 0, 0, 0.05);
+		transform: translateX(10rpx);
 	}
 
 	.menu-icon {
 		font-size: 40rpx;
 		margin-right: 20rpx;
+		z-index: 1;
 	}
 
 	.menu-text {
 		flex: 1;
 		font-size: 32rpx;
 		color: #333333;
+		font-weight: 500;
+		z-index: 1;
 	}
 
 	.menu-arrow {
 		font-size: 32rpx;
 		color: #999999;
+		z-index: 1;
+		transition: transform 0.3s ease;
+	}
+
+	.menu-item:active .menu-arrow {
+		transform: translateX(5rpx);
 	}
 </style>

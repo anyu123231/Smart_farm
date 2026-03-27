@@ -183,7 +183,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background-color: #f5f5f5;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	padding: 20rpx;
 	padding-bottom: 120rpx;
 }
@@ -192,21 +192,24 @@ export default {
 .page-header {
 	padding: 20rpx 0;
 	margin-bottom: 30rpx;
+	text-align: center;
 }
 
 .page-title {
 	font-size: 48rpx;
-	font-weight: bold;
-	color: #333333;
+	font-weight: 700;
+	color: #ffffff;
+	text-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.2);
 }
 
 /* 表单容器样式 */
 .form-container {
-	background-color: #ffffff;
-	border-radius: 20rpx;
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 30rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+	backdrop-filter: blur(10rpx);
 }
 
 /* 表单项样式 */
@@ -222,31 +225,34 @@ export default {
 .label {
 	display: block;
 	font-size: 28rpx;
-	color: #666666;
+	color: #333333;
 	margin-bottom: 15rpx;
-	font-weight: bold;
+	font-weight: 600;
 }
 
 /* 输入框样式 */
 .input {
 	width: 100%;
 	height: 80rpx;
-	background-color: #f8f8f8;
+	background-color: rgba(255, 255, 255, 0.8);
 	border: 2rpx solid #e0e0e0;
-	border-radius: 10rpx;
+	border-radius: 20rpx;
 	padding: 0 20rpx;
 	font-size: 28rpx;
 	color: #333333;
 	box-sizing: border-box;
+	transition: all 0.3s ease;
+	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
 }
 
 .input:focus {
 	border-color: #007AFF;
 	background-color: #ffffff;
+	box-shadow: 0 0 0 2rpx rgba(0, 122, 255, 0.2);
 }
 
 .readonly {
-	background-color: #f0f0f0;
+	background-color: rgba(240, 240, 240, 0.8);
 	color: #999999;
 }
 
@@ -262,17 +268,19 @@ export default {
 .connect-button {
 	width: 80%;
 	height: 90rpx;
-	background-color: #007AFF;
+	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
 	color: #ffffff;
 	font-size: 32rpx;
-	font-weight: bold;
+	font-weight: 700;
 	border-radius: 45rpx;
 	border: none;
-	box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+	box-shadow: 0 6rpx 18rpx rgba(0, 122, 255, 0.4);
+	transition: all 0.3s ease;
 }
 
 .connect-button:active {
-	background-color: #0056b3;
+	background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
 	transform: scale(0.98);
+	box-shadow: 0 3rpx 9rpx rgba(0, 122, 255, 0.4);
 }
 </style>

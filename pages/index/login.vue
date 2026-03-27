@@ -153,7 +153,7 @@ export default {
 	justify-content: center;
 	align-items: center;
 	min-height: 100vh;
-	background-color: #f5f5f5;
+	background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 	padding: 40rpx;
 }
 
@@ -161,13 +161,20 @@ export default {
 .login-card {
 	width: 100%;
 	max-width: 500rpx;
-	background-color: #ffffff;
-	border-radius: 20rpx;
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 30rpx;
 	padding: 60rpx 40rpx;
-	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.1);
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	backdrop-filter: blur(10rpx);
+	transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-card:hover {
+	transform: translateY(-10rpx);
+	box-shadow: 0 15rpx 40rpx rgba(0, 0, 0, 0.25);
 }
 
 /* 应用Logo */
@@ -176,6 +183,12 @@ export default {
 	height: 160rpx;
 	border-radius: 80rpx;
 	margin-bottom: 30rpx;
+	box-shadow: 0 5rpx 15rpx rgba(0, 0, 0, 0.1);
+	transition: transform 0.3s ease;
+}
+
+.app-logo:hover {
+	transform: scale(1.1);
 }
 
 /* 应用名称 */
@@ -184,6 +197,7 @@ export default {
 	font-weight: bold;
 	color: #333333;
 	margin-bottom: 60rpx;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 
 /* 登录表单 */
@@ -202,18 +216,25 @@ export default {
 	font-size: 28rpx;
 	color: #333333;
 	margin-bottom: 10rpx;
-	font-weight: 500;
+	font-weight: 600;
 }
 
 /* 输入框容器 */
 .input-wrapper {
 	display: flex;
 	align-items: center;
-	background-color: #f9f9f9;
-	border-radius: 10rpx;
+	background-color: rgba(255, 255, 255, 0.8);
+	border-radius: 20rpx;
 	padding: 0 20rpx;
 	height: 80rpx;
 	border: 1rpx solid #e0e0e0;
+	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+	transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+	border-color: #007AFF;
+	box-shadow: 0 0 0 2rpx rgba(0, 122, 255, 0.2);
 }
 
 /* 输入图标 */
@@ -241,24 +262,37 @@ export default {
 .login-button {
 	width: 100%;
 	height: 80rpx;
-	background-color: #007AFF;
+	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
 	color: #ffffff;
 	font-size: 32rpx;
 	font-weight: bold;
-	border-radius: 10rpx;
+	border-radius: 20rpx;
 	margin-top: 20rpx;
 	margin-bottom: 20rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+	transition: all 0.3s ease;
+}
+
+.login-button:active {
+	transform: scale(0.98);
+	box-shadow: 0 2rpx 6rpx rgba(0, 122, 255, 0.3);
 }
 
 /* 注册按钮 */
 .register-button {
 	width: 100%;
 	height: 80rpx;
-	background-color: #ffffff;
+	background-color: rgba(255, 255, 255, 0.9);
 	color: #007AFF;
 	font-size: 32rpx;
 	font-weight: bold;
-	border-radius: 10rpx;
+	border-radius: 20rpx;
 	border: 1rpx solid #007AFF;
+	transition: all 0.3s ease;
+}
+
+.register-button:active {
+	background-color: rgba(0, 122, 255, 0.1);
+	transform: scale(0.98);
 }
 </style>

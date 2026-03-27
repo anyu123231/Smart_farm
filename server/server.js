@@ -376,6 +376,51 @@ app.put('/api/device/status', verifyToken, async (req, res) => {
 	}
 })
 
+// 更新设备名称
+app.put('/api/device/name', verifyToken, async (req, res) => {
+	try {
+		const { id, name } = req.body
+		const userId = req.user.id
+		
+		// 检查设备是否属于该用户
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const [result] = await pool.query(
+			'UPDATE devices SET name = ? WHERE id = ? AND user_id = ?',
+			[name, id, userId]
+		)
+		
+		if (result.affectedRows === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在'
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '更新设备名称成功'
+		})
+	} catch (error) {
+		console.error('更新设备名称失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
 // 删除设备
 app.delete('/api/device', verifyToken, async (req, res) => {
 	try {

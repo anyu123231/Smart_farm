@@ -23,9 +23,16 @@
 				<!-- 卡片标题区域 -->
 				<view class="card-header">
 					<text class="card-title">{{ device.name }}</text>
-					<!-- 删除按钮 -->
-					<view class="delete-button" @click="deleteDevice(device.id)">
-						<text class="delete-icon">删除</text>
+					<!-- 操作按钮容器 -->
+					<view class="card-actions">
+						<!-- 编辑按钮 -->
+						<view class="edit-button" @click="editDeviceName(device)">
+							<text class="edit-icon">编辑</text>
+						</view>
+						<!-- 删除按钮 -->
+						<view class="delete-button" @click="deleteDevice(device.id)">
+							<text class="delete-icon">删除</text>
+						</view>
 					</view>
 				</view>
 				<!-- 设备信息小字 -->
@@ -290,6 +297,69 @@ export default {
 			const hours = String(date.getHours()).padStart(2, "0")
 			const minutes = String(date.getMinutes()).padStart(2, "0")
 			return `${year}-${month}-${day} ${hours}:${minutes}`
+		},
+		
+		// 编辑设备名称
+		editDeviceName(device) {
+			// 弹出输入框，让用户输入新的设备名称
+			uni.showModal({
+				title: '编辑设备名称',
+				content: '请输入新的设备名称',
+				editable: true,
+				placeholderText: device.name,
+				success: (res) => {
+					if (res.confirm && res.content.trim()) {
+						// 用户确认并输入了内容
+						const newName = res.content.trim();
+						this.updateDeviceName(device.id, newName);
+					}
+				}
+			});
+		},
+		
+		// 更新设备名称
+		updateDeviceName(deviceId, newName) {
+			// 获取token
+			const token = uni.getStorageSync('token');
+			
+			// 发送请求更新设备名称
+			uni.request({
+				url: 'http://175.24.203.151:3000/api/device/name',
+				method: 'PUT',
+				header: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				data: {
+					id: deviceId,
+					name: newName
+				},
+				success: (res) => {
+					if (res.data && res.data.code === 200) {
+						// 更新成功，更新本地设备列表
+						const device = this.deviceList.find(d => d.id === deviceId);
+						if (device) {
+							device.name = newName;
+						}
+						uni.showToast({
+							title: '更新成功',
+							icon: 'success'
+						});
+					} else {
+						uni.showToast({
+							title: res.data.message || '更新失败',
+							icon: 'none'
+						});
+					}
+				},
+				fail: (err) => {
+					console.error('更新设备名称失败:', err);
+					uni.showToast({
+						title: '网络请求失败',
+						icon: 'none'
+					});
+				}
+			});
 		}
 	}
 }
@@ -301,7 +371,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background-color: #f5f5f5;
+	background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
 	padding: 20rpx;
 	padding-bottom: 120rpx;
 }
@@ -312,11 +382,12 @@ export default {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background-color: #ffffff;
-	border-radius: 20rpx;
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 30rpx;
 	padding: 60rpx 40rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
 	margin-top: 100rpx;
+	backdrop-filter: blur(10rpx);
 }
 
 .login-tip-text {
@@ -324,16 +395,24 @@ export default {
 	color: #333333;
 	margin-bottom: 30rpx;
 	text-align: center;
+	font-weight: 500;
 }
 
 .login-button {
 	width: 200rpx;
 	height: 60rpx;
-	background-color: #007AFF;
+	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
 	color: #ffffff;
 	font-size: 28rpx;
-	font-weight: 500;
+	font-weight: 600;
 	border-radius: 30rpx;
+	box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+	transition: all 0.3s ease;
+}
+
+.login-button:active {
+	transform: scale(0.95);
+	box-shadow: 0 2rpx 6rpx rgba(0, 122, 255, 0.3);
 }
 
 /* 设备列表容器 */
@@ -347,17 +426,24 @@ export default {
 
 /* 卡片容器样式 */
 .card {
-	width: calc(50% - 10rpx);
-	background-color: #ffffff;
-	border-radius: 20rpx;
+	width: calc(50% - 15rpx);
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 30rpx;
 	display: flex;
 	flex-direction: column;
 	justify-content: space-between;
 	align-items: center;
 	padding: 30rpx 20rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
-	margin-bottom: 20rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+	margin-bottom: 30rpx;
 	box-sizing: border-box;
+	backdrop-filter: blur(10rpx);
+	transition: all 0.3s ease;
+}
+
+.card:hover {
+	transform: translateY(-5rpx);
+	box-shadow: 0 15rpx 40rpx rgba(0, 0, 0, 0.15);
 }
 
 /* 卡片头部区域样式 */
@@ -375,8 +461,41 @@ export default {
 .card-title {
 	font-size: 36rpx;
 	color: #333333;
-	font-weight: bold;
+	font-weight: 700;
 	flex: 1;
+	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 操作按钮容器 */
+.card-actions {
+	display: flex;
+	align-items: center;
+}
+
+/* 编辑按钮样式 */
+.edit-button {
+	width: 80rpx;
+	height: 40rpx;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-right: 10rpx;
+	transition: all 0.3s ease;
+	border-radius: 20rpx;
+	padding: 5rpx 10rpx;
+}
+
+.edit-button:active {
+	background-color: rgba(0, 122, 255, 0.1);
+	transform: scale(0.95);
+}
+
+.edit-icon {
+	font-size: 28rpx;
+	color: #007AFF;
+	font-weight: 600;
+	line-height: 1;
+	white-space: nowrap;
 }
 
 /* 删除按钮样式 */
@@ -386,16 +505,24 @@ export default {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin-left: 20rpx;
+	transition: all 0.3s ease;
+	border-radius: 20rpx;
+	padding: 5rpx 10rpx;
+}
+
+.delete-button:active {
+	background-color: rgba(255, 0, 0, 0.1);
+	transform: scale(0.95);
 }
 
 .delete-icon {
 	font-size: 28rpx;
-	color: #ff0000;
-	font-weight: bold;
+	color: #ff3b30;
+	font-weight: 600;
 	line-height: 1;
 	white-space: nowrap;
 }
+
 /* 设备信息区域样式 */
 .device-info {
 	display: flex;
@@ -404,12 +531,17 @@ export default {
 	width: 100%;
 	word-wrap: break-word;
 	word-break: break-all;
+	background-color: rgba(255, 255, 255, 0.8);
+	padding: 20rpx;
+	border-radius: 20rpx;
+	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
 }
 
 /* 信息文本样式 */
 .info-text {
 	font-size: 24rpx;
-	color: #999999;
+	color: #666666;
+	font-weight: 400;
 }
 
 /* 开关容器样式 */
@@ -425,16 +557,18 @@ export default {
 .switch {
 	width: 120rpx;
 	height: 60rpx;
-	background-color: #cccccc;
+	background-color: #e0e0e0;
 	border-radius: 30rpx;
 	position: relative;
-	transition: background-color 0.3s ease;
+	transition: all 0.3s ease;
 	cursor: pointer;
+	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
 }
 
 /* 开关激活状态样式 */
 .switch.active {
-	background-color: #007AFF;
+	background-color: #4CD964;
+	box-shadow: inset 0 2rpx 4rpx rgba(76, 217, 100, 0.4);
 }
 
 /* 开关圆形滑块样式 */
@@ -446,31 +580,34 @@ export default {
 	position: absolute;
 	top: 4rpx;
 	left: 4rpx;
-	transition: left 0.3s ease;
-	box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+	transition: all 0.3s ease;
+	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.2);
 }
 
 /* 开关激活状态下圆形滑块位置 */
-	.switch.active .switch-circle {
-		left: 64rpx;
-	}
+.switch.active .switch-circle {
+	left: 64rpx;
+	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.3);
+}
 
-	/* 无设备提示样式 */
-	.no-device {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		width: 100%;
-		height: 400rpx;
-		background-color: #ffffff;
-		border-radius: 20rpx;
-		margin-top: 20rpx;
-		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
-	}
+/* 无设备提示样式 */
+.no-device {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	height: 400rpx;
+	background-color: rgba(255, 255, 255, 0.95);
+	border-radius: 30rpx;
+	margin-top: 20rpx;
+	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
+	backdrop-filter: blur(10rpx);
+}
 
-	.no-device-text {
-		font-size: 32rpx;
-		color: #999999;
-		text-align: center;
-	}
+.no-device-text {
+	font-size: 32rpx;
+	color: #999999;
+	text-align: center;
+	font-weight: 500;
+}
 </style>

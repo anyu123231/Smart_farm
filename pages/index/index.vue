@@ -108,8 +108,10 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		padding-bottom: 100rpx;
+		min-height: 100vh;
+		padding-bottom: 120rpx;
 		position: relative;
+		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 	}
 
 	/* 扫一扫按钮样式 */
@@ -122,19 +124,28 @@
 		align-items: center;
 		justify-content: center;
 		padding: 20rpx;
+		background-color: rgba(255, 255, 255, 0.9);
+		border-radius: 20rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 		z-index: 100;
+		transition: all 0.3s ease;
+	}
+
+	.scan-button:active {
+		transform: scale(0.95);
+		box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.scan-icon {
-	width: 48rpx;
-	height: 48rpx;
-	margin-bottom: 10rpx;
-}
+		width: 48rpx;
+		height: 48rpx;
+		margin-bottom: 10rpx;
+	}
 
 	.scan-text {
 		font-size: 24rpx;
-		color: #010713;
-		font-weight: bold;
+		color: #333333;
+		font-weight: 600;
 	}
 
 	.logo {
@@ -144,15 +155,28 @@
 		margin-left: auto;
 		margin-right: auto;
 		margin-bottom: 50rpx;
+		border-radius: 40rpx;
+		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+		transition: transform 0.3s ease;
+	}
+
+	.logo:hover {
+		transform: scale(1.05);
 	}
 
 	.text-area {
 		display: flex;
 		justify-content: center;
+		background-color: rgba(255, 255, 255, 0.9);
+		padding: 30rpx 60rpx;
+		border-radius: 40rpx;
+		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
 	}
 
 	.title {
-		font-size: 36rpx;
-		color: #8f8f94;
+		font-size: 40rpx;
+		color: #333333;
+		font-weight: 700;
+		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 	}
 </style>
