@@ -47,6 +47,17 @@
 					disabled
 				/>
 			</view>
+			
+			<!-- 设备类型（只读） -->
+			<view class="form-item">
+				<text class="label">设备类型 (type)</text>
+				<input 
+					class="input readonly" 
+					v-model="deviceInfo.type" 
+					placeholder="设备类型"
+					disabled
+				/>
+			</view>
 		</view>
 		
 		<!-- 连接按钮 -->
@@ -64,7 +75,8 @@ export default {
 				name: '',
 				_openid: '',
 				topic: '',
-				uid: ''
+				uid: '',
+				type: '1'
 			}
 		}
 	},
@@ -80,7 +92,8 @@ export default {
 					name: data.name || '',
 					_openid: data._openid || '',
 					topic: data.topic || '',
-					uid: data.uid || ''
+					uid: data.uid || '',
+					type: data.type || '1'
 				}
 				console.log('设备信息:', this.deviceInfo)
 			} catch (err) {
@@ -130,19 +143,20 @@ export default {
 			const token = uni.getStorageSync('token');
 			
 			uni.request({
-				url: 'http://175.24.203.151:3000/api/device',
-				method: 'POST',
-				header: {
-					'Content-Type': 'application/json',
-					'Authorization': `Bearer ${token}`
-				},
-				data: {
-					name: this.deviceInfo.name,
-					topic: this.deviceInfo.topic,
-					uid: this.deviceInfo.uid,
-					_openid: this.deviceInfo._openid,
-					status: 0
-				},
+			url: 'http://175.24.203.151:3000/api/device',
+			method: 'POST',
+			header: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${token}`
+			},
+			data: {
+				name: this.deviceInfo.name,
+				topic: this.deviceInfo.topic,
+				uid: this.deviceInfo.uid,
+				_openid: this.deviceInfo._openid,
+				status: 0,
+				type: this.deviceInfo.type
+			},
 				success: (res) => {
 					console.log('服务器响应:', res)
 					

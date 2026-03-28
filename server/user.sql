@@ -16,6 +16,11 @@ ALTER TABLE devices MODIFY COLUMN status VARCHAR(10) DEFAULT 'off';
 UPDATE devices SET status = 'on' WHERE status = '1' OR status = 1;
 UPDATE devices SET status = 'off' WHERE status = '0' OR status = 0 OR status IS NULL;
 
+-- 添加 type 列，存放设备类型，默认为 '1'
+ALTER TABLE devices ADD COLUMN IF NOT EXISTS type VARCHAR(10) DEFAULT '1';
+-- 将现有设备的 type 设置为 '1'
+UPDATE devices SET type = '1' WHERE type IS NULL;
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);

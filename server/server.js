@@ -226,7 +226,7 @@ app.delete('/api/user/delete', verifyToken, async (req, res) => {
 app.get('/api/device', verifyToken, async (req, res) => {
 	try {
 		const [rows] = await pool.query(
-			'SELECT id, name, topic, uid, status, createAt FROM devices WHERE user_id = ? ORDER BY createAt DESC',
+			'SELECT id, name, topic, uid, status, type, createAt FROM devices WHERE user_id = ? ORDER BY createAt DESC',
 			[req.user.id]
 		)
 		res.json({
@@ -247,10 +247,10 @@ app.get('/api/device', verifyToken, async (req, res) => {
 // 创建新设备
 app.post('/api/device', verifyToken, async (req, res) => {
 	try {
-		const { name, topic, uid, _openid, status } = req.body
+		const { name, topic, uid, _openid, status, type } = req.body
 		const userId = req.user.id
 		
-		console.log('收到创建设备请求:', { name, topic, uid, _openid, status, userId })
+		console.log('收到创建设备请求:', { name, topic, uid, _openid, status, type, userId })
 		
 		if (!name || !topic || !uid || !_openid) {
 			return res.status(400).json({
@@ -278,8 +278,8 @@ app.post('/api/device', verifyToken, async (req, res) => {
 		
 		console.log('_openid不存在，开始创建设备')
 		const [result] = await pool.query(
-			'INSERT INTO devices (name, topic, uid, _openid, status, user_id, createAt) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-			[name, topic, uid, _openid, status || 'off', userId]
+			'INSERT INTO devices (name, topic, uid, _openid, status, type, user_id, createAt) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+			[name, topic, uid, _openid, status || 'off', type || '1', userId]
 		)
 		
 		console.log('设备创建成功，ID:', result.insertId)
@@ -294,6 +294,7 @@ app.post('/api/device', verifyToken, async (req, res) => {
 				uid,
 				_openid,
 				status: status || 'off',
+				type: type || '1',
 				user_id: userId
 			}
 		})
