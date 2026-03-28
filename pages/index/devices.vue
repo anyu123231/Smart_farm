@@ -137,10 +137,10 @@ export default {
 					
 					// 请求成功，更新设备列表
 					if (res.data.code === 200) {
-						// status 现在是字符串类型 'on' 或 'off'
+						// 正确处理状态值，确保 'on'/'1' 表示开启，'off'/'0' 表示关闭
 						this.deviceList = res.data.data.map(device => ({
 							...device,
-							status: device.status || 'off'
+							status: (device.status === 'on' || device.status === 1 || device.status === '1') ? 'on' : 'off'
 						}))
 						console.log('设备列表:', this.deviceList)
 					} else {
