@@ -42,15 +42,41 @@
 					<text class="info-text">创建时间: {{ formatTime(device.createAt) }}</text>
 				</view>
 				<!-- 开关容器 -->
-					<view class="switch-container">
+					<view v-if="device.type === '1' || device.type === 1" class="switch-container">
 						<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
 						<view 
 							class="switch" 
-							:class="{ active: device.status === 'on' || device.status === 1 || device.status === '1' }" 
+							:class="{ active: device.status === 'on' }" 
 							@click="toggleSwitch(device)"
 						>
 							<!-- 开关圆形滑块 -->
 							<view class="switch-circle"></view>
+						</view>
+					</view>
+					
+					<!-- 双开关容器（类型2设备） -->
+					<view v-else-if="device.type === '2' || device.type === 2" class="dual-switch-container">
+						<!-- 左开关 -->
+						<view class="dual-switch-item">
+							<text class="switch-label">左</text>
+							<view 
+								class="switch" 
+								:class="{ active: device.leftStatus === 'on' }" 
+								@click="toggleLeftSwitch(device)"
+							>
+								<view class="switch-circle"></view>
+							</view>
+						</view>
+						<!-- 右开关 -->
+						<view class="dual-switch-item">
+							<text class="switch-label">右</text>
+							<view 
+								class="switch" 
+								:class="{ active: device.rightStatus === 'on' }" 
+								@click="toggleRightSwitch(device)"
+							>
+								<view class="switch-circle"></view>
+							</view>
 						</view>
 					</view>
 			</view>
@@ -137,11 +163,26 @@ export default {
 					
 					// 请求成功，更新设备列表
 					if (res.data.code === 200) {
-						// 正确处理状态值，确保 'on'/'1' 表示开启，'off'/'0' 表示关闭
-						this.deviceList = res.data.data.map(device => ({
-							...device,
-							status: (device.status === 'on' || device.status === 1 || device.status === '1') ? 'on' : 'off'
-						}))
+						// 正确处理状态值
+						this.deviceList = res.data.data.map(device => {
+							// 对于类型2的设备，解析左右开关状态
+							if (device.type === '2' || device.type === 2) {
+								// 解析复合状态值，格式为 'left:right'
+								const statusParts = (device.status || 'off:off').split(':');
+								return {
+									...device,
+									status: device.status || 'off:off',
+									leftStatus: statusParts[0] === 'on' ? 'on' : 'off',
+									rightStatus: statusParts[1] === 'on' ? 'on' : 'off'
+								};
+							} else {
+								// 对于其他类型的设备，使用简单状态
+								return {
+									...device,
+									status: (device.status === 'on' || device.status === 1 || device.status === '1') ? 'on' : 'off'
+								};
+							}
+						})
 						console.log('设备列表:', this.deviceList)
 					} else {
 						uni.showToast({ title: "获取设备列表失败", icon: "none" })
@@ -154,10 +195,10 @@ export default {
 				}
 			})
 		},
-		// 切换设备开关状态的方法
+		// 切换设备开关状态的方法（类型1设备）
 		async toggleSwitch(device) {
 			// 统一处理状态值，将 1/0 转换为 on/off
-			const currentStatus = device.status === 'on' || device.status === 1 || device.status === '1'
+			const currentStatus = device.status === 'on'
 			const newStatus = currentStatus ? 'off' : 'on'
 			const msg = newStatus
 			
@@ -171,6 +212,72 @@ export default {
 				console.error("更新数据库状态失败:", err)
 				uni.showToast({ title: "更新状态失败", icon: "none" })
 			}
+		},
+		
+		// 切换左开关状态（类型2设备）
+		async toggleLeftSwitch(device) {
+			// 切换左开关状态
+			const newLeftStatus = device.leftStatus === 'on' ? 'off' : 'on'
+			const rightStatus = device.rightStatus
+			
+			// 生成复合状态值和消息
+			const { combinedStatus, msg } = this.generateCombinedStatus(newLeftStatus, rightStatus)
+			
+			// 先更新数据库中的状态
+			try {
+				await this.updateDeviceStatusInDB(device.id, combinedStatus)
+				
+				// 更新本地状态
+				device.leftStatus = newLeftStatus
+				device.status = combinedStatus
+				
+				// 数据库更新成功后，发送控制指令到巴法云API
+				this.sendCmd(device.uid, device.topic, msg, device.id, combinedStatus)
+			} catch (err) {
+				console.error("更新数据库状态失败:", err)
+				uni.showToast({ title: "更新状态失败", icon: "none" })
+			}
+		},
+		
+		// 切换右开关状态（类型2设备）
+		async toggleRightSwitch(device) {
+			// 切换右开关状态
+			const leftStatus = device.leftStatus
+			const newRightStatus = device.rightStatus === 'on' ? 'off' : 'on'
+			
+			// 生成复合状态值和消息
+			const { combinedStatus, msg } = this.generateCombinedStatus(leftStatus, newRightStatus)
+			
+			// 先更新数据库中的状态
+			try {
+				await this.updateDeviceStatusInDB(device.id, combinedStatus)
+				
+				// 更新本地状态
+				device.rightStatus = newRightStatus
+				device.status = combinedStatus
+				
+				// 数据库更新成功后，发送控制指令到巴法云API
+				this.sendCmd(device.uid, device.topic, msg, device.id, combinedStatus)
+			} catch (err) {
+				console.error("更新数据库状态失败:", err)
+				uni.showToast({ title: "更新状态失败", icon: "none" })
+			}
+		},
+		
+		// 生成复合状态值和消息（类型2设备）
+		generateCombinedStatus(leftStatus, rightStatus) {
+			const combinedStatus = `${leftStatus}:${rightStatus}`
+			let msg = 'close'
+			
+			if (leftStatus === 'on' && rightStatus === 'on') {
+				msg = 'full'
+			} else if (leftStatus === 'on') {
+				msg = 'left'
+			} else if (rightStatus === 'on') {
+				msg = 'right'
+			}
+			
+			return { combinedStatus, msg }
 		},
 	// 更新数据库中的设备状态
 		updateDeviceStatusInDB(deviceId, newStatus) {
@@ -237,6 +344,13 @@ export default {
 			const device = this.deviceList.find(d => d.id === deviceId)
 			if (device) {
 				device.status = newStatus
+				
+				// 如果是类型2设备，解析复合状态值并更新左右开关状态
+				if (device.type === '2' || device.type === 2) {
+					const statusParts = newStatus.split(':')
+					device.leftStatus = statusParts[0] || 'off'
+					device.rightStatus = statusParts[1] || 'off'
+				}
 			}
 		},
 		// 删除设备
@@ -430,6 +544,7 @@ export default {
 /* 卡片容器样式 */
 .card {
 	width: calc(50% - 15rpx);
+	min-height: 400rpx;
 	background-color: rgba(255, 255, 255, 0.95);
 	border-radius: 30rpx;
 	display: flex;
@@ -591,6 +706,30 @@ export default {
 .switch.active .switch-circle {
 	left: 64rpx;
 	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.3);
+}
+
+/* 双开关容器样式 */
+.dual-switch-container {
+	display: flex;
+	justify-content: space-around;
+	align-items: center;
+	width: 100%;
+	padding: 20rpx 0;
+}
+
+/* 双开关项样式 */
+.dual-switch-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10rpx;
+}
+
+/* 开关标签样式 */
+.switch-label {
+	font-size: 24rpx;
+	color: #666666;
+	font-weight: 500;
 }
 
 /* 无设备提示样式 */

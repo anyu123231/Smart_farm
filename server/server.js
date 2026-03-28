@@ -340,13 +340,9 @@ app.put('/api/device/status', verifyToken, async (req, res) => {
 		
 		console.log('接收到状态更新请求:', { id, status, type: typeof status })
 		
-		// 规范化状态值，确保保存为 'on' 或 'off'
-		const normalizedStatus = (status === 'on' || status === 1 || status === '1') ? 'on' : 'off'
-		console.log('规范化后的状态:', normalizedStatus)
-		
-		// 检查设备是否属于该用户
+		// 检查设备是否属于该用户，并获取设备类型
 		const [device] = await pool.query(
-			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			'SELECT id, type FROM devices WHERE id = ? AND user_id = ?',
 			[id, userId]
 		)
 		
@@ -356,6 +352,33 @@ app.put('/api/device/status', verifyToken, async (req, res) => {
 				message: '设备不存在或无权操作'
 			})
 		}
+		
+		// 根据设备类型规范化状态值
+		let normalizedStatus
+		const deviceType = device[0].type
+		
+		if (deviceType === '2' || deviceType === 2) {
+			// 类型2设备：处理复合状态值（如 'on:off'）
+			if (status.includes(':')) {
+				// 验证复合状态格式
+				const parts = status.split(':')
+				if (parts.length === 2) {
+					const leftStatus = (parts[0] === 'on' || parts[0] === '1') ? 'on' : 'off'
+					const rightStatus = (parts[1] === 'on' || parts[1] === '1') ? 'on' : 'off'
+					normalizedStatus = `${leftStatus}:${rightStatus}`
+				} else {
+					normalizedStatus = 'off:off'
+				}
+			} else {
+				// 如果不是复合状态，默认为 'off:off'
+				normalizedStatus = 'off:off'
+			}
+		} else {
+			// 类型1设备：规范化为 'on' 或 'off'
+			normalizedStatus = (status === 'on' || status === 1 || status === '1') ? 'on' : 'off'
+		}
+		
+		console.log('规范化后的状态:', normalizedStatus)
 		
 		const [result] = await pool.query(
 			'UPDATE devices SET status = ? WHERE id = ? AND user_id = ?',
