@@ -279,7 +279,7 @@ app.post('/api/device', verifyToken, async (req, res) => {
 		console.log('_openid不存在，开始创建设备')
 		const [result] = await pool.query(
 			'INSERT INTO devices (name, topic, uid, _openid, status, user_id, createAt) VALUES (?, ?, ?, ?, ?, ?, NOW())',
-			[name, topic, uid, _openid, status || 0, userId]
+			[name, topic, uid, _openid, status || 'off', userId]
 		)
 		
 		console.log('设备创建成功，ID:', result.insertId)
@@ -293,7 +293,7 @@ app.post('/api/device', verifyToken, async (req, res) => {
 				topic,
 				uid,
 				_openid,
-				status: status || 0,
+				status: status || 'off',
 				user_id: userId
 			}
 		})
@@ -337,6 +337,12 @@ app.put('/api/device/status', verifyToken, async (req, res) => {
 		const { id, status } = req.body
 		const userId = req.user.id
 		
+		console.log('接收到状态更新请求:', { id, status, type: typeof status })
+		
+		// 规范化状态值，确保保存为 'on' 或 'off'
+		const normalizedStatus = (status === 'on' || status === 1 || status === '1') ? 'on' : 'off'
+		console.log('规范化后的状态:', normalizedStatus)
+		
 		// 检查设备是否属于该用户
 		const [device] = await pool.query(
 			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
@@ -352,7 +358,7 @@ app.put('/api/device/status', verifyToken, async (req, res) => {
 		
 		const [result] = await pool.query(
 			'UPDATE devices SET status = ? WHERE id = ? AND user_id = ?',
-			[status, id, userId]
+			[normalizedStatus, id, userId]
 		)
 		
 		if (result.affectedRows === 0) {

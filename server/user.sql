@@ -11,6 +11,11 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE devices ADD COLUMN IF NOT EXISTS user_id INT NOT NULL;
 ALTER TABLE devices ADD CONSTRAINT IF NOT EXISTS fk_devices_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
+-- 修改 devices 表的 status 字段类型为 varchar，并将 1/0 转换为 on/off
+ALTER TABLE devices MODIFY COLUMN status VARCHAR(10) DEFAULT 'off';
+UPDATE devices SET status = 'on' WHERE status = '1' OR status = 1;
+UPDATE devices SET status = 'off' WHERE status = '0' OR status = 0 OR status IS NULL;
+
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_devices_user_id ON devices(user_id);

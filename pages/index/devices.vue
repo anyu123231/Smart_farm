@@ -42,17 +42,17 @@
 					<text class="info-text">创建时间: {{ formatTime(device.createAt) }}</text>
 				</view>
 				<!-- 开关容器 -->
-				<view class="switch-container">
-					<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
-					<view 
-						class="switch" 
-						:class="{ active: device.status === 1 }" 
-						@click="toggleSwitch(device)"
-					>
-						<!-- 开关圆形滑块 -->
-						<view class="switch-circle"></view>
+					<view class="switch-container">
+						<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
+						<view 
+							class="switch" 
+							:class="{ active: device.status === 'on' || device.status === 1 || device.status === '1' }" 
+							@click="toggleSwitch(device)"
+						>
+							<!-- 开关圆形滑块 -->
+							<view class="switch-circle"></view>
+						</view>
 					</view>
-				</view>
 			</view>
 		</view>
 	</view>
@@ -137,10 +137,10 @@ export default {
 					
 					// 请求成功，更新设备列表
 					if (res.data.code === 200) {
-						// 确保 status 是数字类型
+						// status 现在是字符串类型 'on' 或 'off'
 						this.deviceList = res.data.data.map(device => ({
 							...device,
-							status: parseInt(device.status)
+							status: device.status || 'off'
 						}))
 						console.log('设备列表:', this.deviceList)
 					} else {
@@ -156,9 +156,10 @@ export default {
 		},
 		// 切换设备开关状态的方法
 		async toggleSwitch(device) {
-			// 根据当前状态切换开关
-			const newStatus = device.status === 1 ? 0 : 1
-			const msg = newStatus === 1 ? "on" : "off"
+			// 统一处理状态值，将 1/0 转换为 on/off
+			const currentStatus = device.status === 'on' || device.status === 1 || device.status === '1'
+			const newStatus = currentStatus ? 'off' : 'on'
+			const msg = newStatus
 			
 			// 先更新数据库中的状态
 			try {
@@ -175,6 +176,8 @@ export default {
 		updateDeviceStatusInDB(deviceId, newStatus) {
 			// 获取token
 			const token = uni.getStorageSync('token');
+			
+			console.log('发送状态更新请求:', { deviceId, newStatus, type: typeof newStatus })
 			
 			return new Promise((resolve, reject) => {
 				uni.request({
