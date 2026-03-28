@@ -38,8 +38,24 @@
 				<!-- 设备信息小字 -->
 				<view class="device-info">
 					<text class="info-text">主题: {{ device.topic }}</text>
-					<text class="info-text">UID: {{ device.uid }}</text>
-					<text class="info-text">创建时间: {{ formatTime(device.createAt) }}</text>
+					<!-- 单开关设备显示 -->
+					<template v-if="device.type === '1' || device.type === 1">
+						<text class="info-text" v-if="device.status === 'on'">开启时间: {{ formatTime(device.openTime) }}</text>
+						<text class="info-text" v-if="device.status === 'on'">已开启: {{ formatDuration(device.openTime) }}</text>
+						<text class="info-text" v-if="device.status === 'off' && device.closeTime">关闭时间: {{ formatTime(device.closeTime) }}</text>
+						<text class="info-text" v-if="device.status === 'off' && device.lastDuration > 0">上次开启时长: {{ formatDurationBySeconds(device.lastDuration) }}</text>
+					</template>
+					<!-- 双开关设备显示 -->
+					<template v-else-if="device.type === '2' || device.type === 2">
+						<text class="info-text" v-if="device.leftStatus === 'on'">左开启: {{ formatTime(device.leftOpenTime) }}</text>
+						<text class="info-text" v-if="device.leftStatus === 'on'">左已开启: {{ formatDuration(device.leftOpenTime) }}</text>
+						<text class="info-text" v-if="device.leftStatus === 'off' && device.leftCloseTime">左关闭: {{ formatTime(device.leftCloseTime) }}</text>
+						<text class="info-text" v-if="device.leftStatus === 'off' && device.leftLastDuration > 0">左上次时长: {{ formatDurationBySeconds(device.leftLastDuration) }}</text>
+						<text class="info-text" v-if="device.rightStatus === 'on'">右开启: {{ formatTime(device.rightOpenTime) }}</text>
+						<text class="info-text" v-if="device.rightStatus === 'on'">右已开启: {{ formatDuration(device.rightOpenTime) }}</text>
+						<text class="info-text" v-if="device.rightStatus === 'off' && device.rightCloseTime">右关闭: {{ formatTime(device.rightCloseTime) }}</text>
+						<text class="info-text" v-if="device.rightStatus === 'off' && device.rightLastDuration > 0">右上次时长: {{ formatDurationBySeconds(device.rightLastDuration) }}</text>
+					</template>
 				</view>
 				<!-- 开关容器 -->
 					<view v-if="device.type === '1' || device.type === 1" class="switch-container">
@@ -167,19 +183,29 @@ export default {
 						this.deviceList = res.data.data.map(device => {
 							// 对于类型2的设备，解析左右开关状态
 							if (device.type === '2' || device.type === 2) {
-								// 解析复合状态值，格式为 'left:right'
 								const statusParts = (device.status || 'off:off').split(':');
 								return {
 									...device,
 									status: device.status || 'off:off',
 									leftStatus: statusParts[0] === 'on' ? 'on' : 'off',
-									rightStatus: statusParts[1] === 'on' ? 'on' : 'off'
+									rightStatus: statusParts[1] === 'on' ? 'on' : 'off',
+									leftOpenTime: device.leftOpenTime || null,
+									leftCloseTime: device.leftCloseTime || null,
+									leftTotalDuration: device.leftTotalDuration || 0,
+									leftLastDuration: device.leftLastDuration || 0,
+									rightOpenTime: device.rightOpenTime || null,
+									rightCloseTime: device.rightCloseTime || null,
+									rightTotalDuration: device.rightTotalDuration || 0,
+									rightLastDuration: device.rightLastDuration || 0
 								};
 							} else {
-								// 对于其他类型的设备，使用简单状态
 								return {
 									...device,
-									status: (device.status === 'on' || device.status === 1 || device.status === '1') ? 'on' : 'off'
+									status: (device.status === 'on' || device.status === 1 || device.status === '1') ? 'on' : 'off',
+									openTime: device.openTime || null,
+									closeTime: device.closeTime || null,
+									totalDuration: device.totalDuration || 0,
+									lastDuration: device.lastDuration || 0
 								};
 							}
 						})
@@ -197,41 +223,55 @@ export default {
 		},
 		// 切换设备开关状态的方法（类型1设备）
 		async toggleSwitch(device) {
-			// 统一处理状态值，将 1/0 转换为 on/off
 			const currentStatus = device.status === 'on'
 			const newStatus = currentStatus ? 'off' : 'on'
 			const msg = newStatus
 			
-			// 先更新数据库中的状态
 			try {
+				// 先更新设备状态（核心功能）
 				await this.updateDeviceStatusInDB(device.id, newStatus)
 				
-				// 数据库更新成功后，发送控制指令到巴法云API
+				// 尝试记录开关时间（非核心功能，失败不影响主流程）
+				try {
+					if (newStatus === 'on') {
+						await this.recordOpenTime(device.id)
+					} else {
+						await this.recordCloseTime(device.id, device.openTime)
+					}
+				} catch (timeErr) {
+					console.warn("记录开关时间失败（不影响主功能）:", timeErr)
+				}
+				
 				this.sendCmd(device.uid, device.topic, msg, device.id, newStatus)
 			} catch (err) {
-				console.error("更新数据库状态失败:", err)
+				console.error("更新设备状态失败:", err)
 				uni.showToast({ title: "更新状态失败", icon: "none" })
 			}
 		},
 		
 		// 切换左开关状态（类型2设备）
 		async toggleLeftSwitch(device) {
-			// 切换左开关状态
 			const newLeftStatus = device.leftStatus === 'on' ? 'off' : 'on'
 			const rightStatus = device.rightStatus
 			
-			// 生成复合状态值和消息
 			const { combinedStatus, msg } = this.generateCombinedStatus(newLeftStatus, rightStatus)
 			
-			// 先更新数据库中的状态
 			try {
 				await this.updateDeviceStatusInDB(device.id, combinedStatus)
 				
-				// 更新本地状态
 				device.leftStatus = newLeftStatus
 				device.status = combinedStatus
 				
-				// 数据库更新成功后，发送控制指令到巴法云API
+				try {
+					if (newLeftStatus === 'on') {
+						await this.recordLeftOpenTime(device.id)
+					} else {
+						await this.recordLeftCloseTime(device.id, device.leftOpenTime)
+					}
+				} catch (timeErr) {
+					console.warn("记录左开关时间失败（不影响主功能）:", timeErr)
+				}
+				
 				this.sendCmd(device.uid, device.topic, msg, device.id, combinedStatus)
 			} catch (err) {
 				console.error("更新数据库状态失败:", err)
@@ -241,22 +281,27 @@ export default {
 		
 		// 切换右开关状态（类型2设备）
 		async toggleRightSwitch(device) {
-			// 切换右开关状态
 			const leftStatus = device.leftStatus
 			const newRightStatus = device.rightStatus === 'on' ? 'off' : 'on'
 			
-			// 生成复合状态值和消息
 			const { combinedStatus, msg } = this.generateCombinedStatus(leftStatus, newRightStatus)
 			
-			// 先更新数据库中的状态
 			try {
 				await this.updateDeviceStatusInDB(device.id, combinedStatus)
 				
-				// 更新本地状态
 				device.rightStatus = newRightStatus
 				device.status = combinedStatus
 				
-				// 数据库更新成功后，发送控制指令到巴法云API
+				try {
+					if (newRightStatus === 'on') {
+						await this.recordRightOpenTime(device.id)
+					} else {
+						await this.recordRightCloseTime(device.id, device.rightOpenTime)
+					}
+				} catch (timeErr) {
+					console.warn("记录右开关时间失败（不影响主功能）:", timeErr)
+				}
+				
 				this.sendCmd(device.uid, device.topic, msg, device.id, combinedStatus)
 			} catch (err) {
 				console.error("更新数据库状态失败:", err)
@@ -279,7 +324,261 @@ export default {
 			
 			return { combinedStatus, msg }
 		},
-	// 更新数据库中的设备状态
+		// 记录开启时间
+		recordOpenTime(deviceId) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const openTime = this.formatDateTimeForMySQL(now)
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/openTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						openTime: openTime
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.openTime = openTime
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录开启时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 记录关闭时间和计算开启时长
+		recordCloseTime(deviceId, openTime) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const closeTime = this.formatDateTimeForMySQL(now)
+			
+			let duration = 0
+			if (openTime) {
+				const open = new Date(openTime.replace(' ', 'T'))
+				duration = Math.floor((now - open) / 1000)
+			}
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/closeTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						closeTime: closeTime,
+						duration: duration
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.closeTime = closeTime
+								device.lastDuration = duration
+								device.totalDuration = (device.totalDuration || 0) + duration
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录关闭时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 格式化日期时间为MySQL格式（使用本地时间）
+		formatDateTimeForMySQL(date) {
+			const year = date.getFullYear()
+			const month = String(date.getMonth() + 1).padStart(2, '0')
+			const day = String(date.getDate()).padStart(2, '0')
+			const hours = String(date.getHours()).padStart(2, '0')
+			const minutes = String(date.getMinutes()).padStart(2, '0')
+			const seconds = String(date.getSeconds()).padStart(2, '0')
+			return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+		},
+		
+		// 记录左开关开启时间
+		recordLeftOpenTime(deviceId) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const leftOpenTime = this.formatDateTimeForMySQL(now)
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/leftOpenTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						leftOpenTime: leftOpenTime
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.leftOpenTime = leftOpenTime
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录左开关开启时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 记录左开关关闭时间和计算开启时长
+		recordLeftCloseTime(deviceId, leftOpenTime) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const leftCloseTime = this.formatDateTimeForMySQL(now)
+			
+			let duration = 0
+			if (leftOpenTime) {
+				const open = new Date(leftOpenTime.replace(' ', 'T'))
+				duration = Math.floor((now - open) / 1000)
+			}
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/leftCloseTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						leftCloseTime: leftCloseTime,
+						duration: duration
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.leftCloseTime = leftCloseTime
+								device.leftLastDuration = duration
+								device.leftTotalDuration = (device.leftTotalDuration || 0) + duration
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录左开关关闭时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 记录右开关开启时间
+		recordRightOpenTime(deviceId) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const rightOpenTime = this.formatDateTimeForMySQL(now)
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/rightOpenTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						rightOpenTime: rightOpenTime
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.rightOpenTime = rightOpenTime
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录右开关开启时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 记录右开关关闭时间和计算开启时长
+		recordRightCloseTime(deviceId, rightOpenTime) {
+			const token = uni.getStorageSync('token')
+			const now = new Date()
+			const rightCloseTime = this.formatDateTimeForMySQL(now)
+			
+			let duration = 0
+			if (rightOpenTime) {
+				const open = new Date(rightOpenTime.replace(' ', 'T'))
+				duration = Math.floor((now - open) / 1000)
+			}
+			
+			return new Promise((resolve, reject) => {
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device/rightCloseTime',
+					method: 'PUT',
+					header: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					},
+					data: {
+						id: deviceId,
+						rightCloseTime: rightCloseTime,
+						duration: duration
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200) {
+							const device = this.deviceList.find(d => d.id === deviceId)
+							if (device) {
+								device.rightCloseTime = rightCloseTime
+								device.rightLastDuration = duration
+								device.rightTotalDuration = (device.rightTotalDuration || 0) + duration
+							}
+							resolve()
+						} else {
+							reject(res.data.message || '记录右开关关闭时间失败')
+						}
+					},
+					fail: (err) => {
+						reject(err)
+					}
+				})
+			})
+		},
+		
+		// 更新数据库中的设备状态
 		updateDeviceStatusInDB(deviceId, newStatus) {
 			// 获取token
 			const token = uni.getStorageSync('token');
@@ -405,7 +704,6 @@ export default {
 		},
 		// 格式化时间戳
 		formatTime(timestamp) {
-			// 将时间戳转换为可读格式
 			if (!timestamp) return ""
 			const date = new Date(timestamp)
 			const year = date.getFullYear()
@@ -414,6 +712,29 @@ export default {
 			const hours = String(date.getHours()).padStart(2, "0")
 			const minutes = String(date.getMinutes()).padStart(2, "0")
 			return `${year}-${month}-${day} ${hours}:${minutes}`
+		},
+		
+		// 计算从开启时间到现在的时长
+		formatDuration(openTime) {
+			if (!openTime) return "0分钟"
+			const now = new Date()
+			const open = new Date(openTime)
+			const diffMs = now - open
+			const diffSeconds = Math.floor(diffMs / 1000)
+			return this.formatDurationBySeconds(diffSeconds)
+		},
+		
+		// 将秒数转换为可读的时长格式
+		formatDurationBySeconds(seconds) {
+			if (!seconds || seconds <= 0) return "0分钟"
+			const hours = Math.floor(seconds / 3600)
+			const minutes = Math.floor((seconds % 3600) / 60)
+			
+			if (hours > 0) {
+				return `${hours}小时${minutes}分钟`
+			} else {
+				return `${minutes}分钟`
+			}
 		},
 		
 		// 编辑设备名称
@@ -544,7 +865,7 @@ export default {
 /* 卡片容器样式 */
 .card {
 	width: calc(50% - 15rpx);
-	min-height: 400rpx;
+	min-height: 600rpx;
 	background-color: rgba(255, 255, 255, 0.95);
 	border-radius: 30rpx;
 	display: flex;

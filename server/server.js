@@ -226,7 +226,7 @@ app.delete('/api/user/delete', verifyToken, async (req, res) => {
 app.get('/api/device', verifyToken, async (req, res) => {
 	try {
 		const [rows] = await pool.query(
-			'SELECT id, name, topic, uid, status, type, createAt FROM devices WHERE user_id = ? ORDER BY createAt DESC',
+			'SELECT id, name, topic, uid, status, type, createAt, openTime, closeTime, totalDuration, lastDuration, leftOpenTime, leftCloseTime, leftTotalDuration, leftLastDuration, rightOpenTime, rightCloseTime, rightTotalDuration, rightLastDuration FROM devices WHERE user_id = ? ORDER BY createAt DESC',
 			[req.user.id]
 		)
 		res.json({
@@ -443,6 +443,261 @@ app.put('/api/device/name', verifyToken, async (req, res) => {
 		})
 	} catch (error) {
 		console.error('更新设备名称失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 记录设备开启时间
+app.put('/api/device/openTime', verifyToken, async (req, res) => {
+	try {
+		const { id, openTime } = req.body
+		const userId = req.user.id
+		
+		console.log('记录开启时间:', { id, openTime, userId })
+		
+		// 检查设备是否属于该用户
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const [result] = await pool.query(
+			'UPDATE devices SET openTime = ? WHERE id = ? AND user_id = ?',
+			[openTime, id, userId]
+		)
+		
+		console.log('更新结果:', result)
+		
+		res.json({
+			code: 200,
+			message: '记录开启时间成功'
+		})
+	} catch (error) {
+		console.error('记录开启时间失败:', error)
+		console.error('错误堆栈:', error.stack)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message,
+			stack: error.stack
+		})
+	}
+})
+
+// 记录设备关闭时间和计算开启时长
+app.put('/api/device/closeTime', verifyToken, async (req, res) => {
+	try {
+		const { id, closeTime, duration } = req.body
+		const userId = req.user.id
+		
+		console.log('记录关闭时间:', { id, closeTime, duration, userId })
+		
+		// 检查设备是否属于该用户
+		const [device] = await pool.query(
+			'SELECT id, totalDuration FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const currentTotalDuration = device[0].totalDuration || 0
+		const newTotalDuration = currentTotalDuration + duration
+		
+		console.log('当前累计时长:', currentTotalDuration, '本次时长:', duration, '新累计时长:', newTotalDuration)
+		
+		const [result] = await pool.query(
+			'UPDATE devices SET closeTime = ?, lastDuration = ?, totalDuration = ? WHERE id = ? AND user_id = ?',
+			[closeTime, duration, newTotalDuration, id, userId]
+		)
+		
+		console.log('更新结果:', result)
+		
+		res.json({
+			code: 200,
+			message: '记录关闭时间成功'
+		})
+	} catch (error) {
+		console.error('记录关闭时间失败:', error)
+		console.error('错误堆栈:', error.stack)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message,
+			stack: error.stack
+		})
+	}
+})
+
+// 记录左开关开启时间
+app.put('/api/device/leftOpenTime', verifyToken, async (req, res) => {
+	try {
+		const { id, leftOpenTime } = req.body
+		const userId = req.user.id
+		
+		console.log('记录左开关开启时间:', { id, leftOpenTime, userId })
+		
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		await pool.query(
+			'UPDATE devices SET leftOpenTime = ? WHERE id = ? AND user_id = ?',
+			[leftOpenTime, id, userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '记录左开关开启时间成功'
+		})
+	} catch (error) {
+		console.error('记录左开关开启时间失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 记录左开关关闭时间和计算开启时长
+app.put('/api/device/leftCloseTime', verifyToken, async (req, res) => {
+	try {
+		const { id, leftCloseTime, duration } = req.body
+		const userId = req.user.id
+		
+		console.log('记录左开关关闭时间:', { id, leftCloseTime, duration, userId })
+		
+		const [device] = await pool.query(
+			'SELECT id, leftTotalDuration FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const currentTotalDuration = device[0].leftTotalDuration || 0
+		const newTotalDuration = currentTotalDuration + duration
+		
+		await pool.query(
+			'UPDATE devices SET leftCloseTime = ?, leftLastDuration = ?, leftTotalDuration = ? WHERE id = ? AND user_id = ?',
+			[leftCloseTime, duration, newTotalDuration, id, userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '记录左开关关闭时间成功'
+		})
+	} catch (error) {
+		console.error('记录左开关关闭时间失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 记录右开关开启时间
+app.put('/api/device/rightOpenTime', verifyToken, async (req, res) => {
+	try {
+		const { id, rightOpenTime } = req.body
+		const userId = req.user.id
+		
+		console.log('记录右开关开启时间:', { id, rightOpenTime, userId })
+		
+		const [device] = await pool.query(
+			'SELECT id FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		await pool.query(
+			'UPDATE devices SET rightOpenTime = ? WHERE id = ? AND user_id = ?',
+			[rightOpenTime, id, userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '记录右开关开启时间成功'
+		})
+	} catch (error) {
+		console.error('记录右开关开启时间失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+// 记录右开关关闭时间和计算开启时长
+app.put('/api/device/rightCloseTime', verifyToken, async (req, res) => {
+	try {
+		const { id, rightCloseTime, duration } = req.body
+		const userId = req.user.id
+		
+		console.log('记录右开关关闭时间:', { id, rightCloseTime, duration, userId })
+		
+		const [device] = await pool.query(
+			'SELECT id, rightTotalDuration FROM devices WHERE id = ? AND user_id = ?',
+			[id, userId]
+		)
+		
+		if (device.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '设备不存在或无权操作'
+			})
+		}
+		
+		const currentTotalDuration = device[0].rightTotalDuration || 0
+		const newTotalDuration = currentTotalDuration + duration
+		
+		await pool.query(
+			'UPDATE devices SET rightCloseTime = ?, rightLastDuration = ?, rightTotalDuration = ? WHERE id = ? AND user_id = ?',
+			[rightCloseTime, duration, newTotalDuration, id, userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '记录右开关关闭时间成功'
+		})
+	} catch (error) {
+		console.error('记录右开关关闭时间失败:', error)
 		res.status(500).json({
 			code: 500,
 			message: '服务器内部错误',
