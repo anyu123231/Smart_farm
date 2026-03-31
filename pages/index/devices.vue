@@ -241,7 +241,12 @@ export default {
 		console.log('[Devices] onShow: MQTT消息监听器已注册')
 		// 检查登录状态
 		this.checkLoginStatus()
-		// 注意：订阅和心跳检查在连接成功后启动
+		
+		// 如果已经订阅过但心跳检查停止了，重新启动
+		if (this.subscribedTopics.length > 0 && !this.heartbeatCheckTimer) {
+			console.log('[Devices] 页面重新显示，启动心跳检查')
+			this.startHeartbeatCheck()
+		}
 	},
 	// 页面隐藏生命周期钩子
 	onHide() {
