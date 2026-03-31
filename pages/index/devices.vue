@@ -45,7 +45,12 @@
 					<view class="card-title-area">
 						<view class="title-row">
 							<text class="card-title">{{ device.name }}</text>
-							<view class="online-status" :class="{ 'is-online': isDeviceOnline(device.topic) }">
+							<!-- 设备连接状态 -->
+							<view v-if="!isDeviceOnline(device.topic) && connectionCountdown > 0" class="online-status connecting">
+								<view class="status-spinner"></view>
+								<text class="status-text">{{ connectionCountdown }}s</text>
+							</view>
+							<view v-else class="online-status" :class="{ 'is-online': isDeviceOnline(device.topic) }">
 								<view class="status-dot"></view>
 								<text class="status-text">{{ isDeviceOnline(device.topic) ? '在线' : '离线' }}</text>
 							</view>
@@ -206,7 +211,18 @@ export default {
 			// 设备心跳记录 { topic: lastHeartbeatTime }
 			deviceHeartbeats: {},
 			// 心跳检查定时器
-			heartbeatCheckTimer: null
+			heartbeatCheckTimer: null,
+			// 连接状态倒计时（秒）
+			connectionCountdown: 0,
+			// 倒计时定时器
+			countdownTimer: null
+		}
+	},
+	// 计算属性
+	computed: {
+		// MQTT连接状态
+		isMqttConnected() {
+			return mqtt.getConnectionStatus()
 		}
 	},
 	// 页面加载生命周期钩子
@@ -216,22 +232,30 @@ export default {
 	},
 	// 页面显示生命周期钩子
 	onShow() {
+		// 先注册MQTT消息监听器（确保能收到消息）
+		uni.$on('mqtt:message', this.onMqttMessage)
+		// 注册订阅成功监听器
+		uni.$on('mqtt:subscribed', this.onMqttSubscribed)
+		// 注册连接成功监听器
+		uni.$on('mqtt:connected', this.onMqttConnected)
+		console.log('[Devices] onShow: MQTT消息监听器已注册')
 		// 检查登录状态
 		this.checkLoginStatus()
-		// 监听MQTT消息
-		uni.$on('mqtt:message', this.onMqttMessage)
-		// 启动心跳检查定时器
-		this.startHeartbeatCheck()
+		// 注意：订阅和心跳检查在连接成功后启动
 	},
 	// 页面隐藏生命周期钩子
 	onHide() {
 		uni.$off('mqtt:message', this.onMqttMessage)
+		uni.$off('mqtt:subscribed', this.onMqttSubscribed)
+		uni.$off('mqtt:connected', this.onMqttConnected)
 		// 停止心跳检查定时器
 		this.stopHeartbeatCheck()
 	},
 	// 页面卸载生命周期钩子
 	onUnload() {
 		uni.$off('mqtt:message', this.onMqttMessage)
+		uni.$off('mqtt:subscribed', this.onMqttSubscribed)
+		uni.$off('mqtt:connected', this.onMqttConnected)
 		this.unsubscribeAllTopics()
 		// 停止心跳检查定时器
 		this.stopHeartbeatCheck()
@@ -322,9 +346,8 @@ export default {
 						})
 						console.log('设备列表:', this.deviceList)
 						// 使用第一个设备的uid连接MQTT
+						// 注意：订阅会在连接成功后通过 onMqttConnected 自动进行
 						this.connectMqtt()
-						// 订阅所有设备的MQTT主题
-						this.subscribeAllTopics()
 					} else {
 						uni.showToast({ title: "获取设备列表失败", icon: "none" })
 					}
@@ -1015,6 +1038,22 @@ export default {
 			console.log('[Devices] 取消订阅完成')
 		},
 
+		// 处理MQTT连接成功事件
+		onMqttConnected() {
+			console.log('[Devices] MQTT连接成功，开始订阅主题')
+			// 连接成功后订阅所有主题
+			this.subscribeAllTopics()
+		},
+
+		// 处理MQTT订阅成功事件
+		onMqttSubscribed(data) {
+			console.log('[Devices] MQTT订阅成功:', data.topic)
+			// 订阅成功后启动心跳检查
+			if (!this.heartbeatCheckTimer) {
+				this.startHeartbeatCheck()
+			}
+		},
+
 		// 处理MQTT收到的消息
 		onMqttMessage(data) {
 			const { topic, msg } = data
@@ -1064,6 +1103,14 @@ export default {
 		updateDeviceHeartbeat(topic) {
 			this.deviceHeartbeats[topic] = Date.now()
 			console.log('[Devices] 收到设备心跳:', topic)
+			
+			// 如果倒计时还在进行，停止它（设备已确认在线）
+			if (this.connectionCountdown > 0) {
+				this.stopCountdown()
+				this.connectionCountdown = 0
+				console.log('[Devices] 收到设备心跳，倒计时停止')
+			}
+			
 			// 强制刷新设备列表，更新在线状态显示
 			this.$forceUpdate()
 		},
@@ -1078,6 +1125,12 @@ export default {
 
 		// 启动心跳检查定时器
 		startHeartbeatCheck() {
+			// 无论MQTT是否连接，都启动倒计时等待设备心跳
+			console.log('[Devices] 启动连接倒计时，等待设备心跳')
+			// 启动60秒倒计时
+			this.connectionCountdown = 60
+			this.startCountdown()
+			
 			// 每10秒检查一次设备在线状态
 			this.heartbeatCheckTimer = setInterval(() => {
 				// 触发刷新，更新在线状态显示
@@ -1092,6 +1145,35 @@ export default {
 				clearInterval(this.heartbeatCheckTimer)
 				this.heartbeatCheckTimer = null
 				console.log('[Devices] 停止心跳检查定时器')
+			}
+			// 同时停止倒计时
+			this.stopCountdown()
+		},
+		
+		// 启动倒计时
+		startCountdown() {
+			// 先清除已有的倒计时
+			this.stopCountdown()
+			// 每秒更新一次倒计时
+			this.countdownTimer = setInterval(() => {
+				if (this.connectionCountdown > 0) {
+					this.connectionCountdown--
+					console.log('[Devices] 连接倒计时:', this.connectionCountdown + 's')
+					// 触发刷新，更新UI
+					this.$forceUpdate()
+				} else {
+					// 倒计时结束
+					this.stopCountdown()
+					console.log('[Devices] 连接倒计时结束')
+				}
+			}, 1000)
+		},
+		
+		// 停止倒计时
+		stopCountdown() {
+			if (this.countdownTimer) {
+				clearInterval(this.countdownTimer)
+				this.countdownTimer = null
 			}
 		},
 
@@ -1215,6 +1297,89 @@ export default {
 	gap: 24rpx;
 	position: relative;
 	z-index: 1;
+}
+
+/* 连接状态提示 */
+.connection-status {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 16rpx;
+	padding: 20rpx 32rpx;
+	border-radius: 16rpx;
+	background: #FFFFFF;
+	border: 1rpx solid #E0E0E0;
+	margin-bottom: 8rpx;
+}
+
+.connection-status.connecting {
+	background: rgba(255, 193, 7, 0.1);
+	border-color: rgba(255, 193, 7, 0.3);
+}
+
+.connection-status.connected {
+	background: rgba(0, 200, 83, 0.1);
+	border-color: rgba(0, 200, 83, 0.3);
+}
+
+.connection-status.disconnected {
+	background: rgba(255, 82, 82, 0.1);
+	border-color: rgba(255, 82, 82, 0.3);
+}
+
+.connection-spinner {
+	width: 32rpx;
+	height: 32rpx;
+	border: 4rpx solid #FFC107;
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.status-dot {
+	width: 16rpx;
+	height: 16rpx;
+	border-radius: 50%;
+}
+
+.status-dot.green {
+	background: #00C853;
+	box-shadow: 0 0 12rpx rgba(0, 200, 83, 0.5);
+}
+
+.status-dot.red {
+	background: #FF5252;
+	box-shadow: 0 0 12rpx rgba(255, 82, 82, 0.5);
+}
+
+/* 设备卡片上的倒计时状态 */
+.online-status.connecting {
+	background: rgba(255, 193, 7, 0.15);
+	border-color: rgba(255, 193, 7, 0.4);
+}
+
+.online-status.connecting .status-text {
+	color: #F57C00;
+	font-weight: 600;
+}
+
+.status-spinner {
+	width: 16rpx;
+	height: 16rpx;
+	border: 3rpx solid #FFC107;
+	border-top-color: transparent;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
 }
 
 .no-device {

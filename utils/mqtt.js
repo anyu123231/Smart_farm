@@ -175,6 +175,8 @@ class SimpleMqttClient {
 			case 2: // CONNACK
 				this.connected = true
 				console.log('[MQTT] 连接成功')
+				// 通知连接成功（小程序/APP端）
+				uni.$emit('mqtt:connected')
 				break
 				
 			case 3: // PUBLISH
@@ -267,6 +269,9 @@ class SimpleMqttClient {
 		// 添加到已订阅列表
 		this.subscribedTopics.push(topic)
 		console.log('[MQTT] 订阅:', topic)
+		
+		// 通知订阅成功（小程序/APP端）
+		uni.$emit('mqtt:subscribed', { topic })
 		
 		if (callback) callback(null)
 	}
@@ -454,6 +459,8 @@ function setupClientEventHandlers() {
 	client.on('connect', () => {
 		console.log('[MQTT] 连接成功(appID认证)')
 		clearReconnectTimer()
+		// 通知连接成功
+		uni.$emit('mqtt:connected')
 	})
 
 	client.on('message', (topic, message) => {
@@ -488,6 +495,8 @@ function subscribe(topic) {
 				console.error('[MQTT] 订阅失败:', topic, err)
 			} else {
 				console.log('[MQTT] 订阅成功:', topic)
+				// 通知订阅成功，可以启动心跳检查
+				uni.$emit('mqtt:subscribed', { topic })
 			}
 		})
 	} else {
