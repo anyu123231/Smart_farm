@@ -52,6 +52,7 @@
 
 <script>
 	import TabBar from '../components/TabBar.vue'
+	import mqtt from '../../utils/mqtt.js'
 	export default {
 		components: {
 			TabBar
@@ -63,9 +64,9 @@
 				avatar: '',
 				menuList: [
 					{
-						icon: '⚙',
-						text: '设置',
-						bgColor: 'rgba(0, 176, 255, 0.1)'
+						icon: '☁',
+						text: '巴法云配置',
+						bgColor: 'rgba(0, 230, 118, 0.1)'
 					},
 					{
 						icon: '📊',
@@ -131,6 +132,7 @@
 							if (res.confirm) {
 								uni.removeStorageSync('token');
 								uni.removeStorageSync('userInfo');
+								mqtt.disconnect();
 								this.isLoggedIn = false;
 								this.username = '';
 								this.avatar = '';
@@ -145,7 +147,9 @@
 			},
 			
 			handleMenuClick(item) {
-				if (item.text === '注销') {
+				if (item.text === '巴法云配置') {
+					this.showBemfaConfig()
+				} else if (item.text === '注销') {
 					uni.showModal({
 						title: '注销确认',
 						content: '确定要注销并删除账户吗？',
@@ -181,6 +185,7 @@
 						if (res.data.code === 200) {
 							uni.removeStorageSync('token');
 							uni.removeStorageSync('userInfo');
+							mqtt.disconnect();
 							this.isLoggedIn = false;
 							this.username = '';
 							this.avatar = '';
@@ -202,6 +207,90 @@
 						});
 					}
 				});
+			},
+
+			showBemfaConfig() {
+				const savedAppId = uni.getStorageSync('bemfa_appId') || ''
+
+				uni.showModal({
+					title: '巴法云 MQTT 配置',
+					content: `当前AppID: ${savedAppId || '未配置'}\n\n点击"自动获取"将调用巴法云API自动生成AppID和SecretKey`,
+					confirmText: '自动获取',
+					cancelText: '清除配置',
+					success: (res) => {
+						if (res.confirm) {
+							this.autoGetBemfaKeys()
+						} else if (res.cancel) {
+							uni.removeStorageSync('bemfa_appId')
+							uni.removeStorageSync('bemfa_secretKey')
+							mqtt.disconnect()
+							uni.showToast({ title: '已清除配置', icon: 'success' })
+						}
+					}
+				})
+			},
+
+			autoGetBemfaKeys() {
+				const token = uni.getStorageSync('token')
+
+				uni.showLoading({ title: '正在获取...' })
+
+				uni.request({
+					url: 'http://175.24.203.151:3000/api/device',
+					method: 'GET',
+					header: {
+						'Authorization': `Bearer ${token}`
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 200 && res.data.data.length > 0) {
+							const uid = res.data.data[0].uid
+							if (!uid) {
+								uni.hideLoading()
+								uni.showToast({ title: '设备缺少uid', icon: 'none' })
+								return
+							}
+							this.fetchBemfaAppID(uid)
+						} else {
+							uni.hideLoading()
+							uni.showToast({ title: '请先添加设备', icon: 'none' })
+						}
+					},
+					fail: () => {
+						uni.hideLoading()
+						uni.showToast({ title: '网络错误', icon: 'none' })
+					}
+				})
+			},
+
+			fetchBemfaAppID(uid) {
+				uni.request({
+					url: 'https://pro.bemfa.com/vs/web/v1/userSecretKey',
+					method: 'POST',
+					header: {
+						'Content-Type': 'application/json'
+					},
+					data: {
+						openID: uid
+					},
+					success: (res) => {
+						uni.hideLoading()
+						if (res.data && res.data.code === 0 && res.data.data) {
+							const appId = res.data.data.appID
+							const secretKey = res.data.data.secretKey
+							uni.setStorageSync('bemfa_appId', appId)
+							uni.setStorageSync('bemfa_secretKey', secretKey)
+							uni.showToast({ title: '获取成功', icon: 'success' })
+							console.log('[Bemfa] AppID:', appId, 'SecretKey:', secretKey)
+						} else {
+							uni.showToast({ title: '获取失败: ' + (res.data.msg || ''), icon: 'none' })
+						}
+					},
+					fail: (err) => {
+						uni.hideLoading()
+						console.error('[Bemfa] 获取AppID失败:', err)
+						uni.showToast({ title: '请求巴法云失败', icon: 'none' })
+					}
+				})
 			}
 		}
 	}
@@ -212,7 +301,7 @@
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	padding-bottom: 120rpx;
 	position: relative;
 	overflow: hidden;
@@ -236,7 +325,7 @@
 .glow-1 {
 	width: 300rpx;
 	height: 300rpx;
-	background: rgba(0, 230, 118, 0.04);
+	background: rgba(0, 200, 83, 0.06);
 	top: -60rpx;
 	left: -80rpx;
 }
@@ -244,7 +333,7 @@
 .glow-2 {
 	width: 200rpx;
 	height: 200rpx;
-	background: rgba(0, 176, 255, 0.03);
+	background: rgba(0, 176, 255, 0.04);
 	top: 400rpx;
 	right: -60rpx;
 }
@@ -262,14 +351,14 @@
 	align-items: center;
 	gap: 8rpx;
 	padding: 12rpx 20rpx;
-	background: rgba(255, 82, 82, 0.1);
+	background: rgba(255, 82, 82, 0.08);
 	border-radius: 12rpx;
-	border: 1rpx solid rgba(255, 82, 82, 0.2);
+	border: 1rpx solid rgba(255, 82, 82, 0.15);
 	transition: all 0.3s ease;
 }
 
 .logout-btn:active {
-	background: rgba(255, 82, 82, 0.2);
+	background: rgba(255, 82, 82, 0.15);
 	transform: scale(0.95);
 }
 
@@ -284,12 +373,13 @@
 	flex-direction: column;
 	align-items: center;
 	padding: 50rpx 30rpx 40rpx;
-	background: rgba(30, 30, 45, 0.5);
+	background: #FFFFFF;
 	margin: 10rpx 24rpx 24rpx;
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .avatar-wrapper {
@@ -312,26 +402,26 @@
 	right: -8rpx;
 	bottom: -8rpx;
 	border-radius: 68rpx;
-	border: 2rpx solid rgba(0, 230, 118, 0.3);
+	border: 2rpx solid rgba(0, 200, 83, 0.3);
 }
 
 .login-btn-wrapper {
 	margin-top: 12rpx;
 	padding: 14rpx 48rpx;
-	background: rgba(0, 230, 118, 0.1);
+	background: rgba(0, 200, 83, 0.08);
 	border-radius: 12rpx;
-	border: 1rpx solid rgba(0, 230, 118, 0.3);
+	border: 1rpx solid rgba(0, 200, 83, 0.25);
 	transition: all 0.3s ease;
 }
 
 .login-btn-wrapper:active {
-	background: rgba(0, 230, 118, 0.2);
+	background: rgba(0, 200, 83, 0.15);
 	transform: scale(0.95);
 }
 
 .login-text {
 	font-size: 28rpx;
-	color: #00E676;
+	color: #00C853;
 	font-weight: 600;
 }
 
@@ -343,7 +433,7 @@
 
 .username {
 	font-size: 36rpx;
-	color: #FFFFFF;
+	color: #212121;
 	font-weight: 700;
 	margin-bottom: 8rpx;
 }
@@ -352,7 +442,7 @@
 	font-size: 22rpx;
 	color: #757575;
 	padding: 4rpx 16rpx;
-	background: rgba(0, 230, 118, 0.1);
+	background: rgba(0, 200, 83, 0.08);
 	border-radius: 8rpx;
 }
 
@@ -365,17 +455,18 @@
 .menu-group {
 	display: flex;
 	flex-direction: column;
-	background: rgba(30, 30, 45, 0.5);
+	background: #FFFFFF;
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	border: 1rpx solid #E0E0E0;
 	overflow: hidden;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .menu-item {
 	display: flex;
 	align-items: center;
 	padding: 28rpx 30rpx;
-	border-bottom: 1rpx solid rgba(51, 51, 85, 0.2);
+	border-bottom: 1rpx solid #EEEEEE;
 	transition: all 0.2s ease;
 }
 
@@ -384,7 +475,7 @@
 }
 
 .menu-item:active {
-	background: rgba(44, 44, 62, 0.5);
+	background: #F5F5F5;
 }
 
 .menu-icon-wrapper {
@@ -404,7 +495,7 @@
 .menu-text {
 	flex: 1;
 	font-size: 30rpx;
-	color: #E0E0E0;
+	color: #212121;
 	font-weight: 500;
 }
 
@@ -418,6 +509,6 @@
 
 .version-text {
 	font-size: 22rpx;
-	color: #424242;
+	color: #9E9E9E;
 }
 </style>

@@ -154,7 +154,7 @@
 	min-height: 100vh;
 	padding-bottom: 120rpx;
 	position: relative;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	overflow: hidden;
 }
 
@@ -176,7 +176,7 @@
 .glow-1 {
 	width: 300rpx;
 	height: 300rpx;
-	background: rgba(0, 230, 118, 0.06);
+	background: rgba(0, 200, 83, 0.08);
 	top: -50rpx;
 	right: -50rpx;
 }
@@ -184,7 +184,7 @@
 .glow-2 {
 	width: 250rpx;
 	height: 250rpx;
-	background: rgba(0, 176, 255, 0.05);
+	background: rgba(0, 176, 255, 0.06);
 	bottom: 200rpx;
 	left: -60rpx;
 }
@@ -203,20 +203,21 @@
 	align-items: center;
 	justify-content: center;
 	padding: 16rpx 24rpx;
-	background: rgba(30, 30, 45, 0.8);
+	background: #FFFFFF;
 	border-radius: 16rpx;
-	border: 1rpx solid rgba(0, 230, 118, 0.2);
+	border: 1rpx solid rgba(0, 200, 83, 0.2);
 	transition: all 0.3s ease;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .scan-button:active {
 	transform: scale(0.95);
-	background: rgba(0, 230, 118, 0.1);
+	background: rgba(0, 200, 83, 0.08);
 }
 
 .scan-text {
 	font-size: 20rpx;
-	color: #00E676;
+	color: #00C853;
 	margin-top: 6rpx;
 	font-weight: 500;
 }
@@ -250,24 +251,24 @@
 	right: -16rpx;
 	bottom: -16rpx;
 	border-radius: 48rpx;
-	border: 2rpx solid rgba(0, 230, 118, 0.2);
+	border: 2rpx solid rgba(0, 200, 83, 0.2);
 	animation: pulse-ring 3s ease-in-out infinite;
 }
 
 @keyframes pulse-ring {
 	0%, 100% {
-		border-color: rgba(0, 230, 118, 0.2);
+		border-color: rgba(0, 200, 83, 0.2);
 		transform: scale(1);
 	}
 	50% {
-		border-color: rgba(0, 230, 118, 0.4);
+		border-color: rgba(0, 200, 83, 0.4);
 		transform: scale(1.02);
 	}
 }
 
 .title {
 	font-size: 48rpx;
-	color: #FFFFFF;
+	color: #212121;
 	font-weight: 700;
 	margin-bottom: 12rpx;
 	letter-spacing: 2rpx;
@@ -284,11 +285,12 @@
 	justify-content: space-around;
 	padding: 30rpx;
 	margin: 20rpx 30rpx;
-	background: rgba(30, 30, 45, 0.6);
+	background: #FFFFFF;
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .action-card {
@@ -305,14 +307,14 @@
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(44, 44, 62, 0.8);
+	background: #F5F7FA;
 	border-radius: 20rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #EEEEEE;
 }
 
 .action-text {
 	font-size: 24rpx;
-	color: #B0BEC5;
+	color: #616161;
 	font-weight: 500;
 }
 
@@ -322,10 +324,11 @@
 	justify-content: center;
 	padding: 24rpx;
 	margin: 20rpx 30rpx;
-	background: rgba(30, 30, 45, 0.4);
+	background: #FFFFFF;
 	border-radius: 16rpx;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .status-item {
@@ -341,8 +344,8 @@
 }
 
 .status-dot.online {
-	background: #00E676;
-	box-shadow: 0 0 8rpx rgba(0, 230, 118, 0.6);
+	background: #00C853;
+	box-shadow: 0 0 8rpx rgba(0, 200, 83, 0.4);
 }
 
 .status-label {
@@ -353,7 +356,7 @@
 .status-divider {
 	width: 1rpx;
 	height: 24rpx;
-	background: rgba(51, 51, 85, 0.6);
+	background: #E0E0E0;
 	margin: 0 30rpx;
 }
 </style>

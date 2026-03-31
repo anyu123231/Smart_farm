@@ -244,6 +244,43 @@ app.get('/api/device', verifyToken, async (req, res) => {
 	}
 })
 
+// 从巴法云获取设备最新消息
+async function fetchBemfaLatestMsg(uid, topic, type = 1) {
+	try {
+		const axios = require('axios')
+		const url = `https://apis.bemfa.com/va/getmsg?uid=${uid}&topic=${topic}&type=${type}&num=1`
+		const response = await axios.get(url, { timeout: 5000 })
+		
+		if (response.data && response.data.code === 0 && response.data.data && response.data.data.length > 0) {
+			const latest = response.data.data[0]
+			return {
+				msg: latest.msg,
+				time: latest.time,
+				unix: latest.unix
+			}
+		}
+		return null
+	} catch (error) {
+		console.error('[Bemfa] 获取最新消息失败:', error.message)
+		return null
+	}
+}
+
+// 将巴法云时间格式转为MySQL格式
+function bemfaTimeToMySQL(bemfaTime) {
+	// 巴法云格式: "2022-08-03 17:26:34"
+	// MySQL格式相同，直接返回
+	return bemfaTime
+}
+
+// 计算从开启时间到现在的秒数
+function calculateDuration(openTime) {
+	if (!openTime) return 0
+	const open = new Date(openTime.replace(' ', 'T'))
+	const now = new Date()
+	return Math.floor((now - open) / 1000)
+}
+
 // 创建新设备
 app.post('/api/device', verifyToken, async (req, res) => {
 	try {
@@ -276,10 +313,63 @@ app.post('/api/device', verifyToken, async (req, res) => {
 			})
 		}
 		
+		// 从巴法云拉取最新消息
+		console.log('从巴法云拉取最新消息:', { uid, topic })
+		const bemfaMsg = await fetchBemfaLatestMsg(uid, topic, type === '3' || type === 3 ? 3 : 1)
+		console.log('巴法云返回:', bemfaMsg)
+		
+		// 确定初始状态和时间
+		let initialStatus = status || 'off'
+		let openTime = null
+		let totalDuration = 0
+		let leftOpenTime = null
+		let rightOpenTime = null
+		let leftTotalDuration = 0
+		let rightTotalDuration = 0
+		
+		if (bemfaMsg && bemfaMsg.msg) {
+			// 根据消息内容设置状态
+			const msg = bemfaMsg.msg.toString().toLowerCase().trim()
+			const bemfaMySQLTime = bemfaTimeToMySQL(bemfaMsg.time)
+			
+			if (type === '2' || type === 2) {
+				// 类型2设备：解析 left/right/full/close
+				if (msg === 'full') {
+					initialStatus = 'on:on'
+					leftOpenTime = bemfaMySQLTime
+					rightOpenTime = bemfaMySQLTime
+					leftTotalDuration = calculateDuration(bemfaMsg.time)
+					rightTotalDuration = calculateDuration(bemfaMsg.time)
+				} else if (msg === 'left') {
+					initialStatus = 'on:off'
+					leftOpenTime = bemfaMySQLTime
+					leftTotalDuration = calculateDuration(bemfaMsg.time)
+				} else if (msg === 'right') {
+					initialStatus = 'off:on'
+					rightOpenTime = bemfaMySQLTime
+					rightTotalDuration = calculateDuration(bemfaMsg.time)
+				} else {
+					initialStatus = 'off:off'
+				}
+			} else {
+				// 类型1设备：on/off
+				if (msg === 'on') {
+					initialStatus = 'on'
+					openTime = bemfaMySQLTime
+					totalDuration = calculateDuration(bemfaMsg.time)
+				} else {
+					initialStatus = 'off'
+				}
+			}
+		}
+		
 		console.log('_openid不存在，开始创建设备')
 		const [result] = await pool.query(
-			'INSERT INTO devices (name, topic, uid, _openid, status, type, user_id, createAt) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-			[name, topic, uid, _openid, status || 'off', type || '1', userId]
+			`INSERT INTO devices (name, topic, uid, _openid, status, type, user_id, createAt, 
+			 openTime, totalDuration, leftOpenTime, rightOpenTime, leftTotalDuration, rightTotalDuration) 
+			 VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)`,
+			[name, topic, uid, _openid, initialStatus, type || '1', userId, 
+			 openTime, totalDuration, leftOpenTime, rightOpenTime, leftTotalDuration, rightTotalDuration]
 		)
 		
 		console.log('设备创建成功，ID:', result.insertId)
@@ -293,9 +383,10 @@ app.post('/api/device', verifyToken, async (req, res) => {
 				topic,
 				uid,
 				_openid,
-				status: status || 'off',
+				status: initialStatus,
 				type: type || '1',
-				user_id: userId
+				user_id: userId,
+				bemfaMsg: bemfaMsg || null
 			}
 		})
 	} catch (error) {

@@ -43,7 +43,13 @@
 						</svg>
 					</view>
 					<view class="card-title-area">
-						<text class="card-title">{{ device.name }}</text>
+						<view class="title-row">
+							<text class="card-title">{{ device.name }}</text>
+							<view class="online-status" :class="{ 'is-online': isDeviceOnline(device.topic) }">
+								<view class="status-dot"></view>
+								<text class="status-text">{{ isDeviceOnline(device.topic) ? '在线' : '离线' }}</text>
+							</view>
+						</view>
 						<text class="card-topic">Topic: {{ device.topic }}</text>
 					</view>
 					<view class="card-actions">
@@ -182,7 +188,8 @@
 </template>
 
 <script>
-// 引入CloudBase Web SDK
+import mqtt from '../../utils/mqtt.js'
+
 // Vue组件脚本部分
 export default {
 	// 数据定义
@@ -193,7 +200,13 @@ export default {
 			// 是否已登录
 			isLoggedIn: false,
 			// 用户信息
-			userInfo: {}
+			userInfo: {},
+			// 已订阅的主题列表（用于比较是否需要重新订阅）
+			subscribedTopics: [],
+			// 设备心跳记录 { topic: lastHeartbeatTime }
+			deviceHeartbeats: {},
+			// 心跳检查定时器
+			heartbeatCheckTimer: null
 		}
 	},
 	// 页面加载生命周期钩子
@@ -205,6 +218,23 @@ export default {
 	onShow() {
 		// 检查登录状态
 		this.checkLoginStatus()
+		// 监听MQTT消息
+		uni.$on('mqtt:message', this.onMqttMessage)
+		// 启动心跳检查定时器
+		this.startHeartbeatCheck()
+	},
+	// 页面隐藏生命周期钩子
+	onHide() {
+		uni.$off('mqtt:message', this.onMqttMessage)
+		// 停止心跳检查定时器
+		this.stopHeartbeatCheck()
+	},
+	// 页面卸载生命周期钩子
+	onUnload() {
+		uni.$off('mqtt:message', this.onMqttMessage)
+		this.unsubscribeAllTopics()
+		// 停止心跳检查定时器
+		this.stopHeartbeatCheck()
 	},
 	// 方法定义
 	methods: {
@@ -291,6 +321,10 @@ export default {
 							}
 						})
 						console.log('设备列表:', this.deviceList)
+						// 使用第一个设备的uid连接MQTT
+						this.connectMqtt()
+						// 订阅所有设备的MQTT主题
+						this.subscribeAllTopics()
 					} else {
 						uni.showToast({ title: "获取设备列表失败", icon: "none" })
 					}
@@ -693,30 +727,38 @@ export default {
 				})
 			})
 		},
-		// 发送控制指令到巴法云API
+		// 发送控制指令（通过MQTT发布消息）
 		sendCmd(uid, topic, msg, deviceId, newStatus) {
-			// 发送POST请求到巴法云API
-			uni.request({
-				url: "https://apis.bemfa.com/va/postJsonMsg",
-				method: "POST",
-				data: {
-					uid: uid,
-					topic: topic,
-					type: 3,
-					msg: msg
-				},
-				success: (res) => {
-					// 请求成功，更新本地设备状态
-					uni.showToast({ title: "指令已发送" })
-					this.updateDeviceStatus(deviceId, newStatus)
-					console.log(res)
-				},
-				fail: (err) => {
-					// 请求失败，显示错误信息
-					console.error("发送指令失败:", err)
-					uni.showToast({ title: "发送指令失败", icon: "none" })
-				}
-			})
+			const sent = mqtt.publish(topic, msg)
+			if (sent) {
+				uni.showToast({ title: "指令已发送" })
+				this.updateDeviceStatus(deviceId, newStatus)
+			} else {
+				console.warn('[Devices] MQTT未连接，尝试通过HTTP发送')
+				uni.request({
+					url: "https://apis.bemfa.com/va/sendMessage",
+					method: "GET",
+					data: {
+						uid: uid,
+						topic: topic,
+						type: 1,
+						msg: msg
+					},
+					success: (res) => {
+						if (res.data && res.data.code === 0) {
+							uni.showToast({ title: "指令已发送" })
+							this.updateDeviceStatus(deviceId, newStatus)
+						} else {
+							uni.showToast({ title: "发送失败: " + (res.data.message || ''), icon: "none" })
+						}
+						console.log('[Devices] HTTP发送结果:', res.data)
+					},
+					fail: (err) => {
+						console.error("发送指令失败:", err)
+						uni.showToast({ title: "发送指令失败", icon: "none" })
+					}
+				})
+			}
 		},
 		// 更新设备状态
 		updateDeviceStatus(deviceId, newStatus) {
@@ -752,6 +794,15 @@ export default {
 			// 获取token
 			const token = uni.getStorageSync('token');
 			
+			// 先找到要删除的设备，获取其 topic
+			const deviceToDelete = this.deviceList.find(d => d.id === deviceId)
+			
+			// 如果 MQTT 已连接，先取消订阅
+			if (deviceToDelete && deviceToDelete.topic && mqtt.getConnectionStatus()) {
+				mqtt.unsubscribe(deviceToDelete.topic)
+				console.log('[Devices] 删除设备，取消订阅:', deviceToDelete.topic)
+			}
+			
 			uni.request({
 				url: `http://175.24.203.151:3000/api/device?id=${deviceId}`,
 				method: 'DELETE',
@@ -763,6 +814,16 @@ export default {
 					if (res.data && res.data.code === 200) {
 						// 删除成功，从本地列表中移除
 						this.deviceList = this.deviceList.filter(d => d.id !== deviceId)
+						
+						// 重新订阅（确保只订阅当前存在的设备）
+						this.subscribeAllTopics()
+						
+						// 如果设备列表为空，断开 MQTT 连接
+						if (this.deviceList.length === 0) {
+							mqtt.disconnect()
+							console.log('[Devices] 设备列表为空，断开 MQTT 连接')
+						}
+						
 						uni.showToast({
 							title: '删除成功',
 							icon: 'success'
@@ -879,6 +940,184 @@ export default {
 					});
 				}
 			});
+		},
+
+		// 连接MQTT（使用appID/secretKey认证，不占用设备在线状态）
+		connectMqtt() {
+			// 检查是否已连接，避免重复连接
+			if (mqtt.getConnectionStatus()) {
+				console.log('[Devices] MQTT已连接，跳过')
+				return
+			}
+
+			const appId = uni.getStorageSync('bemfa_appId')
+			const secretKey = uni.getStorageSync('bemfa_secretKey')
+			if (appId && secretKey) {
+				console.log('[Devices] 使用appID连接MQTT')
+				mqtt.connect(appId, secretKey)
+			} else {
+				console.warn('[Devices] 未配置巴法云appID/secretKey，请在个人中心设置')
+			}
+		},
+
+		// 订阅所有设备的MQTT主题
+		subscribeAllTopics() {
+			// 只在已连接状态下订阅
+			if (!mqtt.getConnectionStatus()) {
+				console.warn('[Devices] MQTT未连接，跳过订阅')
+				return
+			}
+			
+			// 获取当前设备列表中的主题
+			const currentTopics = this.deviceList.filter(d => d.topic).map(d => d.topic).sort()
+			const subscribedTopics = [...this.subscribedTopics].sort()
+			
+			// 比较两个数组是否相同
+			const isSame = currentTopics.length === subscribedTopics.length && 
+				currentTopics.every((topic, index) => topic === subscribedTopics[index])
+			
+			if (isSame) {
+				console.log('[Devices] 设备列表未变化，跳过订阅')
+				return
+			}
+			
+			// 计算需要取消订阅和新增订阅的主题
+			const topicsToUnsubscribe = this.subscribedTopics.filter(t => !currentTopics.includes(t))
+			const topicsToSubscribe = currentTopics.filter(t => !this.subscribedTopics.includes(t))
+			
+			console.log('[Devices] 当前订阅:', this.subscribedTopics)
+			console.log('[Devices] 目标订阅:', currentTopics)
+			console.log('[Devices] 取消订阅:', topicsToUnsubscribe)
+			console.log('[Devices] 新增订阅:', topicsToSubscribe)
+			
+			// 取消不再需要的订阅
+			topicsToUnsubscribe.forEach(topic => {
+				mqtt.unsubscribe(topic)
+			})
+			
+			// 新增需要的订阅
+			topicsToSubscribe.forEach(topic => {
+				mqtt.subscribe(topic)
+			})
+			
+			// 更新已订阅列表
+			this.subscribedTopics = currentTopics
+			console.log('[Devices] 订阅更新完成')
+		},
+
+		// 取消订阅所有设备的MQTT主题
+		unsubscribeAllTopics() {
+			console.log('[Devices] 取消所有订阅:', this.subscribedTopics)
+			this.subscribedTopics.forEach(topic => {
+				mqtt.unsubscribe(topic)
+			})
+			this.subscribedTopics = []
+			console.log('[Devices] 取消订阅完成')
+		},
+
+		// 处理MQTT收到的消息
+		onMqttMessage(data) {
+			const { topic, msg } = data
+			console.log('[Devices] 收到MQTT消息:', topic, msg)
+
+			// 处理设备心跳消息
+			if (msg === 'heartbeat' || msg === 'alive' || msg === 'ping') {
+				this.updateDeviceHeartbeat(topic)
+				return
+			}
+
+			const device = this.deviceList.find(d => d.topic === topic)
+			if (!device) return
+
+			const msgLower = (msg || '').toLowerCase().trim()
+
+			if (device.type === '1' || device.type === 1) {
+				// 类型1设备：on/off
+				const newStatus = (msgLower === 'on') ? 'on' : 'off'
+				if (device.status !== newStatus) {
+					this.updateDeviceStatus(device.id, newStatus)
+					this.syncStatusToServer(device.id, newStatus)
+				}
+			} else if (device.type === '2' || device.type === 2) {
+				// 类型2设备：close/left/right/full
+				let newLeft = 'off'
+				let newRight = 'off'
+
+				if (msgLower === 'left') {
+					newLeft = 'on'
+				} else if (msgLower === 'right') {
+					newRight = 'on'
+				} else if (msgLower === 'full') {
+					newLeft = 'on'
+					newRight = 'on'
+				}
+
+				const combinedStatus = `${newLeft}:${newRight}`
+				if (device.status !== combinedStatus) {
+					this.updateDeviceStatus(device.id, combinedStatus)
+					this.syncStatusToServer(device.id, combinedStatus)
+				}
+			}
+		},
+
+		// 更新设备心跳时间
+		updateDeviceHeartbeat(topic) {
+			this.deviceHeartbeats[topic] = Date.now()
+			console.log('[Devices] 收到设备心跳:', topic)
+			// 强制刷新设备列表，更新在线状态显示
+			this.$forceUpdate()
+		},
+
+		// 检查设备是否在线（根据心跳时间）
+		isDeviceOnline(topic) {
+			const lastHeartbeat = this.deviceHeartbeats[topic]
+			if (!lastHeartbeat) return false
+			// 60秒内收到过心跳认为在线
+			return (Date.now() - lastHeartbeat) < 60000
+		},
+
+		// 启动心跳检查定时器
+		startHeartbeatCheck() {
+			// 每10秒检查一次设备在线状态
+			this.heartbeatCheckTimer = setInterval(() => {
+				// 触发刷新，更新在线状态显示
+				this.$forceUpdate()
+			}, 10000)
+			console.log('[Devices] 启动心跳检查定时器')
+		},
+
+		// 停止心跳检查定时器
+		stopHeartbeatCheck() {
+			if (this.heartbeatCheckTimer) {
+				clearInterval(this.heartbeatCheckTimer)
+				this.heartbeatCheckTimer = null
+				console.log('[Devices] 停止心跳检查定时器')
+			}
+		},
+
+		// 将MQTT收到的状态同步到服务器
+		syncStatusToServer(deviceId, newStatus) {
+			const token = uni.getStorageSync('token')
+			uni.request({
+				url: 'http://175.24.203.151:3000/api/device/status',
+				method: 'PUT',
+				header: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${token}`
+				},
+				data: {
+					id: deviceId,
+					status: newStatus
+				},
+				success: (res) => {
+					if (res.data && res.data.code === 200) {
+						console.log('[Devices] 状态已同步到服务器')
+					}
+				},
+				fail: (err) => {
+					console.error('[Devices] 同步状态到服务器失败:', err)
+				}
+			})
 		}
 	}
 }
@@ -889,7 +1128,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	padding: 20rpx 24rpx;
 	padding-bottom: 140rpx;
 	position: relative;
@@ -914,7 +1153,7 @@ export default {
 .glow-1 {
 	width: 300rpx;
 	height: 300rpx;
-	background: rgba(0, 230, 118, 0.04);
+	background: rgba(0, 200, 83, 0.06);
 	top: -80rpx;
 	right: -60rpx;
 }
@@ -922,7 +1161,7 @@ export default {
 .glow-2 {
 	width: 250rpx;
 	height: 250rpx;
-	background: rgba(0, 176, 255, 0.03);
+	background: rgba(0, 176, 255, 0.05);
 	bottom: 300rpx;
 	left: -80rpx;
 }
@@ -932,13 +1171,14 @@ export default {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background: rgba(30, 30, 45, 0.8);
+	background: #FFFFFF;
 	border-radius: 24rpx;
 	padding: 80rpx 40rpx;
 	margin-top: 120rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .login-tip-icon {
@@ -947,7 +1187,7 @@ export default {
 
 .login-tip-text {
 	font-size: 30rpx;
-	color: #B0BEC5;
+	color: #616161;
 	margin-bottom: 40rpx;
 	text-align: center;
 }
@@ -955,13 +1195,13 @@ export default {
 .login-button {
 	width: 240rpx;
 	height: 72rpx;
-	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
-	color: #0D0D1A;
+	background: linear-gradient(135deg, #00C853 0%, #00A344 100%);
+	color: #FFFFFF;
 	font-size: 28rpx;
 	font-weight: 600;
 	border-radius: 16rpx;
 	border: none;
-	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 4rpx 20rpx rgba(0, 200, 83, 0.3);
 	transition: all 0.3s ease;
 }
 
@@ -983,10 +1223,11 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 100rpx 40rpx;
-	background: rgba(30, 30, 45, 0.5);
+	background: #FFFFFF;
 	border-radius: 24rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	border: 1rpx solid #E0E0E0;
 	margin-top: 60rpx;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .no-device-icon {
@@ -1002,20 +1243,21 @@ export default {
 
 .no-device-sub {
 	font-size: 24rpx;
-	color: #424242;
+	color: #9E9E9E;
 }
 
 .card {
 	width: 100%;
-	background: rgba(30, 30, 45, 0.8);
+	background: #FFFFFF;
 	border-radius: 24rpx;
 	padding: 28rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
 	transition: all 0.3s ease;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .card:active {
-	border-color: rgba(0, 230, 118, 0.2);
+	border-color: rgba(0, 200, 83, 0.3);
 }
 
 .card-top {
@@ -1029,21 +1271,21 @@ export default {
 	width: 72rpx;
 	height: 72rpx;
 	border-radius: 18rpx;
-	background: rgba(44, 44, 62, 0.8);
+	background: #F5F7FA;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	margin-right: 20rpx;
 	color: #757575;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #EEEEEE;
 	transition: all 0.3s ease;
 }
 
 .device-icon-wrapper.is-on {
-	background: rgba(0, 230, 118, 0.1);
-	color: #00E676;
-	border-color: rgba(0, 230, 118, 0.3);
-	box-shadow: 0 0 16rpx rgba(0, 230, 118, 0.15);
+	background: rgba(0, 200, 83, 0.1);
+	color: #00C853;
+	border-color: rgba(0, 200, 83, 0.3);
+	box-shadow: 0 0 16rpx rgba(0, 200, 83, 0.1);
 }
 
 .card-title-area {
@@ -1052,16 +1294,58 @@ export default {
 	flex-direction: column;
 }
 
+.title-row {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	margin-bottom: 4rpx;
+}
+
 .card-title {
 	font-size: 32rpx;
-	color: #FFFFFF;
+	color: #212121;
 	font-weight: 700;
-	margin-bottom: 4rpx;
 }
 
 .card-topic {
 	font-size: 22rpx;
-	color: #616161;
+	color: #9E9E9E;
+}
+
+/* 设备在线状态 */
+.online-status {
+	display: flex;
+	align-items: center;
+	gap: 6rpx;
+	padding: 4rpx 12rpx;
+	border-radius: 12rpx;
+	background: #F5F5F5;
+}
+
+.online-status.is-online {
+	background: rgba(0, 200, 83, 0.1);
+}
+
+.status-dot {
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 50%;
+	background: #BDBDBD;
+}
+
+.online-status.is-online .status-dot {
+	background: #00C853;
+	box-shadow: 0 0 8rpx rgba(0, 200, 83, 0.5);
+}
+
+.status-text {
+	font-size: 20rpx;
+	color: #757575;
+	font-weight: 500;
+}
+
+.online-status.is-online .status-text {
+	color: #00C853;
 }
 
 .card-actions {
@@ -1082,7 +1366,7 @@ export default {
 
 .edit-btn {
 	background: rgba(0, 176, 255, 0.1);
-	color: #00B0FF;
+	color: #0091EA;
 }
 
 .edit-btn:active {
@@ -1102,7 +1386,7 @@ export default {
 
 .card-divider {
 	height: 1rpx;
-	background: rgba(51, 51, 85, 0.4);
+	background: #EEEEEE;
 	margin: 20rpx 0;
 }
 
@@ -1127,11 +1411,11 @@ export default {
 }
 
 .section-dot.left {
-	background: #00B0FF;
+	background: #0091EA;
 }
 
 .section-dot.right {
-	background: #FFD600;
+	background: #FFB300;
 }
 
 .section-label {
@@ -1155,11 +1439,11 @@ export default {
 
 .info-value {
 	font-size: 24rpx;
-	color: #B0BEC5;
+	color: #616161;
 }
 
 .info-value.highlight {
-	color: #00E676;
+	color: #00C853;
 	font-weight: 600;
 }
 
@@ -1182,7 +1466,7 @@ export default {
 }
 
 .switch-status-text.is-on {
-	color: #00E676;
+	color: #00C853;
 }
 
 .dual-switch-area {
@@ -1210,43 +1494,44 @@ export default {
 }
 
 .channel-dot.left {
-	background: #00B0FF;
+	background: #0091EA;
 }
 
 .channel-dot.right {
-	background: #FFD600;
+	background: #FFB300;
 }
 
 .switch {
 	width: 100rpx;
 	height: 52rpx;
-	background: rgba(44, 44, 62, 0.8);
+	background: #E0E0E0;
 	border-radius: 26rpx;
 	position: relative;
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	border: 1rpx solid #D0D0D0;
 }
 
 .switch.active {
-	background: rgba(0, 230, 118, 0.2);
-	border-color: rgba(0, 230, 118, 0.4);
-	box-shadow: 0 0 16rpx rgba(0, 230, 118, 0.2);
+	background: rgba(0, 200, 83, 0.2);
+	border-color: rgba(0, 200, 83, 0.4);
+	box-shadow: 0 0 16rpx rgba(0, 200, 83, 0.15);
 }
 
 .switch-circle {
 	width: 42rpx;
 	height: 42rpx;
-	background: #757575;
+	background: #FFFFFF;
 	border-radius: 50%;
 	position: absolute;
 	top: 4rpx;
 	left: 4rpx;
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.15);
 }
 
 .switch.active .switch-circle {
 	left: 52rpx;
-	background: #00E676;
-	box-shadow: 0 0 12rpx rgba(0, 230, 118, 0.5);
+	background: #00C853;
+	box-shadow: 0 0 12rpx rgba(0, 200, 83, 0.4);
 }
 </style>

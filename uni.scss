@@ -1,30 +1,30 @@
-$uni-color-primary: #00E676;
-$uni-color-primary-dark: #00C853;
-$uni-color-primary-light: #69F0AE;
+$uni-color-primary: #00C853;
+$uni-color-primary-dark: #00A344;
+$uni-color-primary-light: #B9F6CA;
 $uni-color-accent: #00B0FF;
 $uni-color-accent-dark: #0091EA;
-$uni-color-success: #00E676;
-$uni-color-warning: #FFD600;
+$uni-color-success: #00C853;
+$uni-color-warning: #FFB300;
 $uni-color-error: #FF5252;
 
-$uni-text-color: #E0E0E0;
-$uni-text-color-inverse: #121212;
+$uni-text-color: #212121;
+$uni-text-color-inverse: #FFFFFF;
 $uni-text-color-grey: #757575;
-$uni-text-color-placeholder: #616161;
-$uni-text-color-disable: #424242;
-$uni-text-color-title: #FFFFFF;
-$uni-text-color-subtitle: #B0BEC5;
+$uni-text-color-placeholder: #9E9E9E;
+$uni-text-color-disable: #BDBDBD;
+$uni-text-color-title: #212121;
+$uni-text-color-subtitle: #616161;
 
-$uni-bg-color: #121212;
-$uni-bg-color-grey: #1E1E1E;
-$uni-bg-color-hover: #2C2C2C;
-$uni-bg-color-mask: rgba(0, 0, 0, 0.6);
-$uni-bg-color-card: #1E1E2D;
-$uni-bg-color-card-hover: #2A2A3D;
-$uni-bg-color-input: #2C2C3E;
+$uni-bg-color: #F5F7FA;
+$uni-bg-color-grey: #FFFFFF;
+$uni-bg-color-hover: #E8EAF6;
+$uni-bg-color-mask: rgba(0, 0, 0, 0.4);
+$uni-bg-color-card: #FFFFFF;
+$uni-bg-color-card-hover: #F5F5F5;
+$uni-bg-color-input: #FFFFFF;
 
-$uni-border-color: #333355;
-$uni-border-color-light: #2A2A44;
+$uni-border-color: #E0E0E0;
+$uni-border-color-light: #EEEEEE;
 
 $uni-font-size-sm: 12px;
 $uni-font-size-base: 14px;
@@ -50,15 +50,15 @@ $uni-spacing-col-lg: 12px;
 
 $uni-opacity-disabled: 0.3;
 
-$uni-color-title: #FFFFFF;
+$uni-color-title: #212121;
 $uni-font-size-title: 20px;
-$uni-color-subtitle: #B0BEC5;
+$uni-color-subtitle: #616161;
 $uni-font-size-subtitle: 15px;
-$uni-color-paragraph: #CFD8DC;
+$uni-color-paragraph: #424242;
 $uni-font-size-paragraph: 14px;
 
-$uni-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-$uni-shadow-base: 0 4px 16px rgba(0, 0, 0, 0.4);
-$uni-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-$uni-shadow-glow-green: 0 0 20px rgba(0, 230, 118, 0.3);
-$uni-shadow-glow-blue: 0 0 20px rgba(0, 176, 255, 0.3);
+$uni-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+$uni-shadow-base: 0 4px 16px rgba(0, 0, 0, 0.1);
+$uni-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+$uni-shadow-glow-green: 0 0 20px rgba(0, 200, 83, 0.2);
+$uni-shadow-glow-blue: 0 0 20px rgba(0, 176, 255, 0.2);

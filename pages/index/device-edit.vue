@@ -213,7 +213,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	padding: 24rpx;
 	position: relative;
 	overflow: hidden;
@@ -237,7 +237,7 @@ export default {
 .glow-1 {
 	width: 300rpx;
 	height: 300rpx;
-	background: rgba(0, 176, 255, 0.04);
+	background: rgba(0, 176, 255, 0.05);
 	top: -80rpx;
 	right: -60rpx;
 }
@@ -252,23 +252,24 @@ export default {
 .page-title {
 	font-size: 40rpx;
 	font-weight: 700;
-	color: #FFFFFF;
+	color: #212121;
 	margin-bottom: 8rpx;
 }
 
 .page-subtitle {
 	font-size: 24rpx;
-	color: #757575;
+	color: #9E9E9E;
 }
 
 .form-container {
-	background: rgba(30, 30, 45, 0.6);
+	background: #FFFFFF;
 	border-radius: 24rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .form-item {
@@ -282,41 +283,41 @@ export default {
 .label {
 	display: block;
 	font-size: 26rpx;
-	color: #B0BEC5;
+	color: #424242;
 	margin-bottom: 12rpx;
 	font-weight: 600;
 }
 
 .input-wrapper {
-	background: rgba(44, 44, 62, 0.8);
+	background: #F5F7FA;
 	border-radius: 14rpx;
 	padding: 0 24rpx;
 	height: 88rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	border: 1rpx solid #E0E0E0;
 	transition: all 0.3s ease;
 	display: flex;
 	align-items: center;
 }
 
 .input-wrapper:focus-within {
-	border-color: #00E676;
-	box-shadow: 0 0 0 2rpx rgba(0, 230, 118, 0.15);
+	border-color: #00C853;
+	box-shadow: 0 0 0 2rpx rgba(0, 200, 83, 0.15);
 }
 
 .input-wrapper.readonly {
-	opacity: 0.5;
+	opacity: 0.6;
 }
 
 .input {
 	flex: 1;
 	height: 100%;
 	font-size: 28rpx;
-	color: #E0E0E0;
+	color: #212121;
 	background-color: transparent;
 }
 
 .placeholder {
-	color: #616161;
+	color: #9E9E9E;
 }
 
 .button-container {
@@ -331,19 +332,19 @@ export default {
 .connect-button {
 	width: 100%;
 	height: 96rpx;
-	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
-	color: #0D0D1A;
+	background: linear-gradient(135deg, #00C853 0%, #00A344 100%);
+	color: #FFFFFF;
 	font-size: 32rpx;
 	font-weight: 700;
 	border-radius: 16rpx;
 	border: none;
-	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 4rpx 20rpx rgba(0, 200, 83, 0.25);
 	transition: all 0.3s ease;
 	letter-spacing: 2rpx;
 }
 
 .connect-button:active {
 	transform: scale(0.98);
-	box-shadow: 0 2rpx 10rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 2rpx 10rpx rgba(0, 200, 83, 0.25);
 }
 </style>

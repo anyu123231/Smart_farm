@@ -18,7 +18,7 @@
 				<view class="input-group">
 					<view class="input-wrapper">
 						<view class="input-icon">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C853" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
 								<circle cx="12" cy="7" r="4"/>
 							</svg>
@@ -35,7 +35,7 @@
 				<view class="input-group">
 					<view class="input-wrapper">
 						<view class="input-icon">
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00C853" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
 								<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
 							</svg>
@@ -145,7 +145,7 @@ export default {
 	justify-content: center;
 	align-items: center;
 	min-height: 100vh;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	padding: 60rpx 40rpx;
 	position: relative;
 	overflow: hidden;
@@ -163,13 +163,13 @@ export default {
 .circle {
 	position: absolute;
 	border-radius: 50%;
-	opacity: 0.08;
+	opacity: 0.06;
 }
 
 .circle-1 {
 	width: 400rpx;
 	height: 400rpx;
-	background: #00E676;
+	background: #00C853;
 	top: -100rpx;
 	right: -100rpx;
 }
@@ -185,7 +185,7 @@ export default {
 .circle-3 {
 	width: 200rpx;
 	height: 200rpx;
-	background: #00E676;
+	background: #00C853;
 	bottom: -50rpx;
 	right: 80rpx;
 }
@@ -193,15 +193,16 @@ export default {
 .login-card {
 	width: 100%;
 	max-width: 600rpx;
-	background: rgba(30, 30, 45, 0.9);
+	background: #FFFFFF;
 	border-radius: 32rpx;
 	padding: 60rpx 40rpx;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	border: 1rpx solid rgba(0, 230, 118, 0.15);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
 }
 
 .logo-wrapper {
@@ -224,21 +225,21 @@ export default {
 	transform: translate(-50%, -50%);
 	width: 180rpx;
 	height: 180rpx;
-	background: radial-gradient(circle, rgba(0, 230, 118, 0.2) 0%, transparent 70%);
+	background: radial-gradient(circle, rgba(0, 200, 83, 0.15) 0%, transparent 70%);
 	border-radius: 50%;
 }
 
 .app-name {
 	font-size: 44rpx;
 	font-weight: 700;
-	color: #FFFFFF;
+	color: #212121;
 	margin-bottom: 8rpx;
 	letter-spacing: 4rpx;
 }
 
 .app-slogan {
 	font-size: 22rpx;
-	color: #757575;
+	color: #9E9E9E;
 	margin-bottom: 60rpx;
 	letter-spacing: 2rpx;
 }
@@ -254,17 +255,17 @@ export default {
 .input-wrapper {
 	display: flex;
 	align-items: center;
-	background: rgba(44, 44, 62, 0.8);
+	background: #F5F7FA;
 	border-radius: 16rpx;
 	padding: 0 24rpx;
 	height: 96rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	border: 1rpx solid #E0E0E0;
 	transition: all 0.3s ease;
 }
 
 .input-wrapper:focus-within {
-	border-color: #00E676;
-	box-shadow: 0 0 0 2rpx rgba(0, 230, 118, 0.15);
+	border-color: #00C853;
+	box-shadow: 0 0 0 2rpx rgba(0, 200, 83, 0.15);
 }
 
 .input-icon {
@@ -277,18 +278,18 @@ export default {
 	flex: 1;
 	height: 100%;
 	font-size: 30rpx;
-	color: #E0E0E0;
+	color: #212121;
 	background-color: transparent;
 }
 
 .placeholder {
-	color: #616161;
+	color: #9E9E9E;
 }
 
 .login-button {
 	width: 100%;
 	height: 96rpx;
-	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+	background: linear-gradient(135deg, #00C853 0%, #00A344 100%);
 	border-radius: 16rpx;
 	margin-top: 20rpx;
 	margin-bottom: 20rpx;
@@ -296,19 +297,19 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 4rpx 20rpx rgba(0, 200, 83, 0.25);
 	transition: all 0.3s ease;
 }
 
 .login-button:active {
 	transform: scale(0.98);
-	box-shadow: 0 2rpx 10rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 2rpx 10rpx rgba(0, 200, 83, 0.25);
 }
 
 .btn-text {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #0D0D1A;
+	color: #FFFFFF;
 	letter-spacing: 4rpx;
 }
 
@@ -317,7 +318,7 @@ export default {
 	height: 96rpx;
 	background: transparent;
 	border-radius: 16rpx;
-	border: 1rpx solid rgba(0, 230, 118, 0.4);
+	border: 1rpx solid rgba(0, 200, 83, 0.35);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -325,11 +326,11 @@ export default {
 }
 
 .register-button:active {
-	background: rgba(0, 230, 118, 0.1);
+	background: rgba(0, 200, 83, 0.08);
 	transform: scale(0.98);
 }
 
 .register-text {
-	color: #00E676;
+	color: #00C853;
 }
 </style>

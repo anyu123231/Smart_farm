@@ -7,7 +7,7 @@
 		
 		<view class="page-header">
 			<view class="header-back" @click="goBack">
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#212121" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<polyline points="15 18 9 12 15 6"/>
 				</svg>
 			</view>
@@ -77,7 +77,7 @@
 		
 		<view class="button-container">
 			<button class="save-button" @click="saveSettings">
-				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
 					<polyline points="20 6 9 17 4 12"/>
 				</svg>
 				<text class="btn-text">保存设置</text>
@@ -87,6 +87,8 @@
 </template>
 
 <script>
+import mqtt from '../../utils/mqtt.js'
+
 export default {
 	data() {
 		return {
@@ -123,6 +125,10 @@ export default {
 				} else {
 					this.isOn = this.device.status === 'on'
 				}
+
+				if (this.device.topic) {
+					mqtt.subscribe(this.device.topic)
+				}
 			} catch (err) {
 				console.error('解析设备信息失败:', err)
 				uni.showToast({ title: '数据解析失败', icon: 'none' })
@@ -133,6 +139,14 @@ export default {
 		const now = new Date()
 		now.setMinutes(now.getMinutes() + 1)
 		this.minDateTime = now.toISOString().slice(0, 16)
+
+		uni.$on('mqtt:message', this.onMqttMessage)
+	},
+	onUnload() {
+		uni.$off('mqtt:message', this.onMqttMessage)
+		if (this.device && this.device.topic) {
+			mqtt.unsubscribe(this.device.topic)
+		}
 	},
 	methods: {
 		// 返回上一页
@@ -292,20 +306,41 @@ export default {
 		
 		// 发送控制指令到巴法云API
 		sendCmd(msg, status) {
-			// 发送POST请求到巴法云API
-			uni.request({
-				url: "https://apis.bemfa.com/va/postJsonMsg",
-				method: "POST",
-				data: {
-					uid: this.device.uid,
-					topic: this.device.topic,
-					type: 3,
-					msg: msg
-				},
-				success: (res) => {
-					console.log('发送指令成功:', res)
-				}
-			})
+			const sent = mqtt.publish(this.device.topic, msg)
+			if (!sent) {
+				console.warn('[Settings] MQTT未连接，尝试通过HTTP发送')
+				uni.request({
+					url: "https://apis.bemfa.com/va/sendMessage",
+					method: "GET",
+					data: {
+						uid: this.device.uid,
+						topic: this.device.topic,
+						type: 1,
+						msg: msg
+					},
+					success: (res) => {
+						console.log('[Settings] HTTP发送结果:', res.data)
+					}
+				})
+			}
+		},
+
+		// 处理MQTT收到的消息
+		onMqttMessage(data) {
+			const { topic, msg } = data
+			if (topic !== this.device.topic) return
+
+			const msgLower = (msg || '').toLowerCase().trim()
+
+			if (this.switchType === 'left') {
+				const newLeftStatus = msgLower === 'left' || msgLower === 'full' ? 'on' : 'off'
+				this.isOn = newLeftStatus === 'on'
+			} else if (this.switchType === 'right') {
+				const newRightStatus = msgLower === 'right' || msgLower === 'full' ? 'on' : 'off'
+				this.isOn = newRightStatus === 'on'
+			} else {
+				this.isOn = msgLower === 'on'
+			}
 		}
 	}
 }
@@ -316,7 +351,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: #0D0D1A;
+	background: #F5F7FA;
 	padding: 24rpx;
 	position: relative;
 	overflow: hidden;
@@ -340,7 +375,7 @@ export default {
 .glow-1 {
 	width: 300rpx;
 	height: 300rpx;
-	background: rgba(0, 176, 255, 0.04);
+	background: rgba(0, 176, 255, 0.05);
 	top: -80rpx;
 	right: -60rpx;
 }
@@ -348,7 +383,7 @@ export default {
 .glow-2 {
 	width: 250rpx;
 	height: 250rpx;
-	background: rgba(0, 230, 118, 0.03);
+	background: rgba(0, 200, 83, 0.04);
 	bottom: 100rpx;
 	left: -80rpx;
 }
@@ -369,9 +404,10 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: rgba(30, 30, 45, 0.6);
+	background: #FFFFFF;
 	border-radius: 16rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .header-info {
@@ -382,13 +418,13 @@ export default {
 .page-title {
 	font-size: 36rpx;
 	font-weight: 700;
-	color: #FFFFFF;
+	color: #212121;
 	margin-bottom: 4rpx;
 }
 
 .page-subtitle {
 	font-size: 24rpx;
-	color: #757575;
+	color: #9E9E9E;
 }
 
 .header-right {
@@ -398,15 +434,15 @@ export default {
 .status-badge {
 	display: flex;
 	align-items: center;
-	background: rgba(255, 82, 82, 0.12);
-	border: 1rpx solid rgba(255, 82, 82, 0.25);
+	background: rgba(255, 82, 82, 0.08);
+	border: 1rpx solid rgba(255, 82, 82, 0.15);
 	border-radius: 20rpx;
 	padding: 8rpx 20rpx;
 }
 
 .status-badge.is-on {
-	background: rgba(0, 230, 118, 0.12);
-	border-color: rgba(0, 230, 118, 0.25);
+	background: rgba(0, 200, 83, 0.08);
+	border-color: rgba(0, 200, 83, 0.2);
 }
 
 .status-dot {
@@ -418,28 +454,29 @@ export default {
 }
 
 .status-badge.is-on .status-dot {
-	background: #00E676;
-	box-shadow: 0 0 8rpx rgba(0, 230, 118, 0.5);
+	background: #00C853;
+	box-shadow: 0 0 8rpx rgba(0, 200, 83, 0.4);
 }
 
 .status-text {
 	font-size: 22rpx;
-	color: #B0BEC5;
+	color: #757575;
 	font-weight: 600;
 }
 
 .status-badge.is-on .status-text {
-	color: #00E676;
+	color: #00C853;
 }
 
 .settings-container {
-	background: rgba(30, 30, 45, 0.6);
+	background: #FFFFFF;
 	border-radius: 24rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	border: 1rpx solid #E0E0E0;
 	position: relative;
 	z-index: 1;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
 }
 
 .section-header {
@@ -450,16 +487,16 @@ export default {
 
 .section-title {
 	font-size: 28rpx;
-	color: #E0E0E0;
+	color: #212121;
 	font-weight: 700;
 	margin-left: 12rpx;
 }
 
 .settings-card {
-	background: rgba(44, 44, 62, 0.8);
+	background: #F5F7FA;
 	border-radius: 18rpx;
 	padding: 28rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	border: 1rpx solid #EEEEEE;
 }
 
 .form-item {
@@ -482,15 +519,15 @@ export default {
 
 .label {
 	font-size: 26rpx;
-	color: #B0BEC5;
+	color: #424242;
 	font-weight: 600;
 }
 
 .datetime-picker {
-	background: rgba(30, 30, 45, 0.8);
+	background: #FFFFFF;
 	border-radius: 14rpx;
 	padding: 20rpx;
-	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	border: 1rpx solid #E0E0E0;
 	transition: all 0.3s ease;
 }
 
@@ -499,7 +536,7 @@ export default {
 	align-items: flex-start;
 	margin-top: 24rpx;
 	padding: 20rpx;
-	background: rgba(0, 176, 255, 0.06);
+	background: rgba(0, 176, 255, 0.05);
 	border-radius: 14rpx;
 	border: 1rpx solid rgba(0, 176, 255, 0.1);
 }
@@ -528,13 +565,13 @@ export default {
 .save-button {
 	width: 100%;
 	height: 96rpx;
-	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
-	color: #0D0D1A;
+	background: linear-gradient(135deg, #00C853 0%, #00A344 100%);
+	color: #FFFFFF;
 	font-size: 32rpx;
 	font-weight: 700;
 	border-radius: 16rpx;
 	border: none;
-	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 4rpx 20rpx rgba(0, 200, 83, 0.25);
 	transition: all 0.3s ease;
 	display: flex;
 	align-items: center;
@@ -544,7 +581,7 @@ export default {
 
 .save-button:active {
 	transform: scale(0.98);
-	box-shadow: 0 2rpx 10rpx rgba(0, 230, 118, 0.3);
+	box-shadow: 0 2rpx 10rpx rgba(0, 200, 83, 0.25);
 }
 
 .btn-text {

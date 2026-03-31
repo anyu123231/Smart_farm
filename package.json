@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@cloudbase/js-sdk": "^2.27.1",
+    "mqtt": "^5.10.0",
     "vue": "^3.0.0"
   },
   "devDependencies": {
