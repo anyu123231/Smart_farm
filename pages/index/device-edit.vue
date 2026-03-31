@@ -1,68 +1,78 @@
 <template>
 	<view class="content">
-		<!-- 页面标题 -->
+		<view class="bg-decoration">
+			<view class="glow glow-1"></view>
+		</view>
+		
 		<view class="page-header">
 			<text class="page-title">设备编辑</text>
+			<text class="page-subtitle">配置设备连接信息</text>
 		</view>
 		
-		<!-- 设备信息表单 -->
 		<view class="form-container">
-			<!-- 设备名称 -->
 			<view class="form-item">
 				<text class="label">设备名称</text>
-				<input 
-					class="input" 
-					v-model="deviceInfo.name" 
-					placeholder="请输入设备名称"
-				/>
+				<view class="input-wrapper">
+					<input 
+						class="input" 
+						v-model="deviceInfo.name" 
+						placeholder="请输入设备名称"
+						placeholder-class="placeholder"
+					/>
+				</view>
 			</view>
 			
-			<!-- 主题 -->
 			<view class="form-item">
-				<text class="label">主题</text>
-				<input 
-					class="input" 
-					v-model="deviceInfo.topic" 
-					placeholder="请输入主题"
-				/>
+				<text class="label">主题 (Topic)</text>
+				<view class="input-wrapper">
+					<input 
+						class="input" 
+						v-model="deviceInfo.topic" 
+						placeholder="请输入主题"
+						placeholder-class="placeholder"
+					/>
+				</view>
 			</view>
 			
-			<!-- UID -->
 			<view class="form-item">
 				<text class="label">UID</text>
-				<input 
-					class="input" 
-					v-model="deviceInfo.uid" 
-					placeholder="请输入UID"
-				/>
+				<view class="input-wrapper">
+					<input 
+						class="input" 
+						v-model="deviceInfo.uid" 
+						placeholder="请输入UID"
+						placeholder-class="placeholder"
+					/>
+				</view>
 			</view>
 			
-			<!-- _openid（只读） -->
 			<view class="form-item">
 				<text class="label">设备ID (_openid)</text>
-				<input 
-					class="input readonly" 
-					v-model="deviceInfo._openid" 
-					placeholder="设备ID"
-					disabled
-				/>
+				<view class="input-wrapper readonly">
+					<input 
+						class="input" 
+						v-model="deviceInfo._openid" 
+						placeholder="设备ID"
+						disabled
+					/>
+				</view>
 			</view>
 			
-			<!-- 设备类型（只读） -->
 			<view class="form-item">
 				<text class="label">设备类型 (type)</text>
-				<input 
-					class="input readonly" 
-					v-model="deviceInfo.type" 
-					placeholder="设备类型"
-					disabled
-				/>
+				<view class="input-wrapper readonly">
+					<input 
+						class="input" 
+						v-model="deviceInfo.type" 
+						placeholder="设备类型"
+						disabled
+					/>
+				</view>
 			</view>
 		</view>
 		
-		<!-- 连接按钮 -->
 		<view class="button-container">
-			<button class="connect-button" @click="connectDevice">连接</button>
+			<button class="connect-button" @click="connectDevice">连接设备</button>
 		</view>
 	</view>
 </template>
@@ -81,10 +91,8 @@ export default {
 		}
 	},
 	onLoad(options) {
-		// 检查登录状态
 		this.checkLoginStatus();
 		
-		// 获取传递过来的设备信息
 		if (options.data) {
 			try {
 				const data = JSON.parse(decodeURIComponent(options.data))
@@ -106,7 +114,6 @@ export default {
 		}
 	},
 	methods: {
-		// 检查登录状态
 		checkLoginStatus() {
 			const token = uni.getStorageSync('token');
 			if (!token) {
@@ -121,9 +128,7 @@ export default {
 				}, 1000);
 			}
 		},
-		// 连接设备（保存到数据库）
 		connectDevice() {
-			// 验证必填字段
 			if (!this.deviceInfo.name || !this.deviceInfo.topic || !this.deviceInfo.uid || !this.deviceInfo._openid) {
 				uni.showToast({
 					title: '请填写完整信息',
@@ -132,14 +137,11 @@ export default {
 				return
 			}
 			
-			// 保存到数据库
 			this.saveDeviceToDatabase()
 		},
-		// 保存设备到数据库
 		saveDeviceToDatabase() {
 			console.log('准备保存设备:', this.deviceInfo)
 			
-			// 获取token
 			const token = uni.getStorageSync('token');
 			
 			uni.request({
@@ -160,12 +162,26 @@ export default {
 				success: (res) => {
 					console.log('服务器响应:', res)
 					
+					if (res.data && res.data.code === 401) {
+						uni.showToast({
+							title: '登录已过期，请重新登录',
+							icon: 'none'
+						})
+						uni.removeStorageSync('token')
+						uni.removeStorageSync('userInfo')
+						setTimeout(() => {
+							uni.navigateTo({
+								url: '/pages/index/login'
+							})
+						}, 1500)
+						return
+					}
+					
 					if (res.data && res.data.code === 200) {
 						uni.showToast({
 							title: '连接成功',
 							icon: 'success'
 						})
-						// 延迟跳转到设备列表页面
 						setTimeout(() => {
 							uni.switchTab({
 								url: '/pages/index/devices'
@@ -197,104 +213,137 @@ export default {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	padding: 20rpx;
-	padding-bottom: 120rpx;
+	background: #0D0D1A;
+	padding: 24rpx;
+	position: relative;
+	overflow: hidden;
 }
 
-/* 页面标题样式 */
+.bg-decoration {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.glow {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(100rpx);
+}
+
+.glow-1 {
+	width: 300rpx;
+	height: 300rpx;
+	background: rgba(0, 176, 255, 0.04);
+	top: -80rpx;
+	right: -60rpx;
+}
+
 .page-header {
 	padding: 20rpx 0;
 	margin-bottom: 30rpx;
-	text-align: center;
+	position: relative;
+	z-index: 1;
 }
 
 .page-title {
-	font-size: 48rpx;
+	font-size: 40rpx;
 	font-weight: 700;
-	color: #ffffff;
-	text-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.2);
+	color: #FFFFFF;
+	margin-bottom: 8rpx;
 }
 
-/* 表单容器样式 */
+.page-subtitle {
+	font-size: 24rpx;
+	color: #757575;
+}
+
 .form-container {
-	background-color: rgba(255, 255, 255, 0.95);
-	border-radius: 30rpx;
+	background: rgba(30, 30, 45, 0.6);
+	border-radius: 24rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(10rpx);
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	position: relative;
+	z-index: 1;
 }
 
-/* 表单项样式 */
 .form-item {
-	margin-bottom: 30rpx;
+	margin-bottom: 28rpx;
 }
 
 .form-item:last-child {
 	margin-bottom: 0;
 }
 
-/* 标签样式 */
 .label {
 	display: block;
-	font-size: 28rpx;
-	color: #333333;
-	margin-bottom: 15rpx;
+	font-size: 26rpx;
+	color: #B0BEC5;
+	margin-bottom: 12rpx;
 	font-weight: 600;
 }
 
-/* 输入框样式 */
+.input-wrapper {
+	background: rgba(44, 44, 62, 0.8);
+	border-radius: 14rpx;
+	padding: 0 24rpx;
+	height: 88rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+}
+
+.input-wrapper:focus-within {
+	border-color: #00E676;
+	box-shadow: 0 0 0 2rpx rgba(0, 230, 118, 0.15);
+}
+
+.input-wrapper.readonly {
+	opacity: 0.5;
+}
+
 .input {
-	width: 100%;
-	height: 80rpx;
-	background-color: rgba(255, 255, 255, 0.8);
-	border: 2rpx solid #e0e0e0;
-	border-radius: 20rpx;
-	padding: 0 20rpx;
+	flex: 1;
+	height: 100%;
 	font-size: 28rpx;
-	color: #333333;
-	box-sizing: border-box;
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+	color: #E0E0E0;
+	background-color: transparent;
 }
 
-.input:focus {
-	border-color: #007AFF;
-	background-color: #ffffff;
-	box-shadow: 0 0 0 2rpx rgba(0, 122, 255, 0.2);
+.placeholder {
+	color: #616161;
 }
 
-.readonly {
-	background-color: rgba(240, 240, 240, 0.8);
-	color: #999999;
-}
-
-/* 按钮容器样式 */
 .button-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	padding: 20rpx 0;
+	position: relative;
+	z-index: 1;
 }
 
-/* 连接按钮样式 */
 .connect-button {
-	width: 80%;
-	height: 90rpx;
-	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
-	color: #ffffff;
+	width: 100%;
+	height: 96rpx;
+	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+	color: #0D0D1A;
 	font-size: 32rpx;
 	font-weight: 700;
-	border-radius: 45rpx;
+	border-radius: 16rpx;
 	border: none;
-	box-shadow: 0 6rpx 18rpx rgba(0, 122, 255, 0.4);
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	transition: all 0.3s ease;
+	letter-spacing: 2rpx;
 }
 
 .connect-button:active {
-	background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
 	transform: scale(0.98);
-	box-shadow: 0 3rpx 9rpx rgba(0, 122, 255, 0.4);
+	box-shadow: 0 2rpx 10rpx rgba(0, 230, 118, 0.3);
 }
 </style>

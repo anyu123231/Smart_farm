@@ -3,44 +3,53 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "首页"
+				"navigationBarTitleText": "首页",
+				"navigationBarBackgroundColor": "#0D0D1A",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/index/devices",
 			"style": {
-				"navigationBarTitleText": "设备"
+				"navigationBarTitleText": "设备",
+				"navigationBarBackgroundColor": "#0D0D1A",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/index/mine",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "我的",
+				"navigationBarBackgroundColor": "#0D0D1A",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/index/device-edit",
 			"style": {
-				"navigationBarTitleText": "设备编辑"
+				"navigationBarTitleText": "设备编辑",
+				"navigationBarBackgroundColor": "#0D0D1A",
+				"navigationBarTextStyle": "white"
 			}
 		},
 		{
 			"path": "pages/index/login",
 			"style": {
-				"navigationBarTitleText": "登录"
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
 			}
 		}
 	],
 	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "智慧农业",
+		"navigationBarBackgroundColor": "#0D0D1A",
+		"backgroundColor": "#0D0D1A"
 	},
 	"tabBar": {
-		"color": "#666666",
-		"selectedColor": "#007AFF",
-		"backgroundColor": "#ffffff",
+		"color": "#757575",
+		"selectedColor": "#00E676",
+		"backgroundColor": "#0D0D1A",
 		"borderStyle": "black",
 		"list": [
 			{

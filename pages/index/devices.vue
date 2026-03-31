@@ -1,80 +1,156 @@
 <template>
-	<!-- 页面根容器 -->
 	<view class="content">
-		<!-- 未登录提示 -->
+		<view class="bg-decoration">
+			<view class="glow glow-1"></view>
+			<view class="glow glow-2"></view>
+		</view>
+		
 		<view v-if="!isLoggedIn" class="login-tip">
+			<view class="login-tip-icon">
+				<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+					<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+				</svg>
+			</view>
 			<text class="login-tip-text">请先登录后查看设备信息</text>
 			<button class="login-button" @click="goToLogin">去登录</button>
 		</view>
 		
-		<!-- 设备卡片列表 -->
 		<view v-else class="device-list">
-			<!-- 无设备提示 -->
 			<view v-if="deviceList.length === 0" class="no-device">
-				<text class="no-device-text">暂无设备。请添加设备</text>
+				<view class="no-device-icon">
+					<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#333355" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+						<line x1="8" y1="21" x2="16" y2="21"/>
+						<line x1="12" y1="17" x2="12" y2="21"/>
+					</svg>
+				</view>
+				<text class="no-device-text">暂无设备</text>
+				<text class="no-device-sub">扫描设备二维码添加新设备</text>
 			</view>
 			
-			<!-- 设备卡片 -->
 			<view 
 				class="card" 
 				v-for="device in deviceList"
 				:key="device.id"
 			>
-				<!-- 卡片标题区域 -->
-				<view class="card-header">
-					<text class="card-title">{{ device.name }}</text>
-					<!-- 操作按钮容器 -->
+				<view class="card-top">
+					<view class="device-icon-wrapper" :class="{ 'is-on': (device.type === '1' || device.type === 1) ? device.status === 'on' : device.leftStatus === 'on' || device.rightStatus === 'on' }">
+						<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M18 20V10"/>
+							<path d="M12 20V4"/>
+							<path d="M6 20v-6"/>
+						</svg>
+					</view>
+					<view class="card-title-area">
+						<text class="card-title">{{ device.name }}</text>
+						<text class="card-topic">Topic: {{ device.topic }}</text>
+					</view>
 					<view class="card-actions">
-						<!-- 编辑按钮 -->
-						<view class="edit-button" @click="editDeviceName(device)">
-							<text class="edit-icon">编辑</text>
+						<view class="action-btn edit-btn" @click="editDeviceName(device)">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+								<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+							</svg>
 						</view>
-						<!-- 删除按钮 -->
-						<view class="delete-button" @click="deleteDevice(device.id)">
-							<text class="delete-icon">删除</text>
+						<view class="action-btn delete-btn" @click="deleteDevice(device.id)">
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="3 6 5 6 21 6"/>
+								<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+							</svg>
 						</view>
 					</view>
 				</view>
-				<!-- 设备信息小字 -->
+				
+				<view class="card-divider"></view>
+				
 				<view class="device-info">
-					<text class="info-text">主题: {{ device.topic }}</text>
-					<!-- 单开关设备显示 -->
 					<template v-if="device.type === '1' || device.type === 1">
-						<text class="info-text" v-if="device.status === 'on'">开启时间: {{ formatTime(device.openTime) }}</text>
-						<text class="info-text" v-if="device.status === 'on'">已开启: {{ formatDuration(device.openTime) }}</text>
-						<text class="info-text" v-if="device.status === 'off' && device.closeTime">关闭时间: {{ formatTime(device.closeTime) }}</text>
-						<text class="info-text" v-if="device.status === 'off' && device.lastDuration > 0">上次开启时长: {{ formatDurationBySeconds(device.lastDuration) }}</text>
+						<view class="info-row" v-if="device.status === 'on'">
+							<text class="info-label">开启时间</text>
+							<text class="info-value">{{ formatTime(device.openTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.status === 'on'">
+							<text class="info-label">已开启</text>
+							<text class="info-value highlight">{{ formatDuration(device.openTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.status === 'off' && device.closeTime">
+							<text class="info-label">关闭时间</text>
+							<text class="info-value">{{ formatTime(device.closeTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.status === 'off' && device.lastDuration > 0">
+							<text class="info-label">上次时长</text>
+							<text class="info-value">{{ formatDurationBySeconds(device.lastDuration) }}</text>
+						</view>
 					</template>
-					<!-- 双开关设备显示 -->
 					<template v-else-if="device.type === '2' || device.type === 2">
-						<text class="info-text" v-if="device.leftStatus === 'on'">左开启: {{ formatTime(device.leftOpenTime) }}</text>
-						<text class="info-text" v-if="device.leftStatus === 'on'">左已开启: {{ formatDuration(device.leftOpenTime) }}</text>
-						<text class="info-text" v-if="device.leftStatus === 'off' && device.leftCloseTime">左关闭: {{ formatTime(device.leftCloseTime) }}</text>
-						<text class="info-text" v-if="device.leftStatus === 'off' && device.leftLastDuration > 0">左上次时长: {{ formatDurationBySeconds(device.leftLastDuration) }}</text>
-						<text class="info-text" v-if="device.rightStatus === 'on'">右开启: {{ formatTime(device.rightOpenTime) }}</text>
-						<text class="info-text" v-if="device.rightStatus === 'on'">右已开启: {{ formatDuration(device.rightOpenTime) }}</text>
-						<text class="info-text" v-if="device.rightStatus === 'off' && device.rightCloseTime">右关闭: {{ formatTime(device.rightCloseTime) }}</text>
-						<text class="info-text" v-if="device.rightStatus === 'off' && device.rightLastDuration > 0">右上次时长: {{ formatDurationBySeconds(device.rightLastDuration) }}</text>
+						<view class="info-section-title">
+							<view class="section-dot left"></view>
+							<text class="section-label">左通道</text>
+						</view>
+						<view class="info-row" v-if="device.leftStatus === 'on'">
+							<text class="info-label">开启时间</text>
+							<text class="info-value">{{ formatTime(device.leftOpenTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.leftStatus === 'on'">
+							<text class="info-label">已开启</text>
+							<text class="info-value highlight">{{ formatDuration(device.leftOpenTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.leftStatus === 'off' && device.leftCloseTime">
+							<text class="info-label">关闭时间</text>
+							<text class="info-value">{{ formatTime(device.leftCloseTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.leftStatus === 'off' && device.leftLastDuration > 0">
+							<text class="info-label">上次时长</text>
+							<text class="info-value">{{ formatDurationBySeconds(device.leftLastDuration) }}</text>
+						</view>
+						<view class="info-section-title">
+							<view class="section-dot right"></view>
+							<text class="section-label">右通道</text>
+						</view>
+						<view class="info-row" v-if="device.rightStatus === 'on'">
+							<text class="info-label">开启时间</text>
+							<text class="info-value">{{ formatTime(device.rightOpenTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.rightStatus === 'on'">
+							<text class="info-label">已开启</text>
+							<text class="info-value highlight">{{ formatDuration(device.rightOpenTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.rightStatus === 'off' && device.rightCloseTime">
+							<text class="info-label">关闭时间</text>
+							<text class="info-value">{{ formatTime(device.rightCloseTime) }}</text>
+						</view>
+						<view class="info-row" v-if="device.rightStatus === 'off' && device.rightLastDuration > 0">
+							<text class="info-label">上次时长</text>
+							<text class="info-value">{{ formatDurationBySeconds(device.rightLastDuration) }}</text>
+						</view>
 					</template>
 				</view>
-				<!-- 开关容器 -->
-					<view v-if="device.type === '1' || device.type === 1" class="switch-container">
-						<!-- 开关组件，根据device.status状态切换active类，点击触发toggleSwitch方法 -->
+				
+				<view class="card-divider"></view>
+				
+				<view class="switch-area">
+					<view v-if="device.type === '1' || device.type === 1" class="switch-row">
+						<text class="switch-status-text" :class="{ 'is-on': device.status === 'on' }">
+							{{ device.status === 'on' ? '运行中' : '已关闭' }}
+						</text>
 						<view 
 							class="switch" 
 							:class="{ active: device.status === 'on' }" 
 							@click="toggleSwitch(device)"
 						>
-							<!-- 开关圆形滑块 -->
 							<view class="switch-circle"></view>
 						</view>
 					</view>
 					
-					<!-- 双开关容器（类型2设备） -->
-					<view v-else-if="device.type === '2' || device.type === 2" class="dual-switch-container">
-						<!-- 左开关 -->
+					<view v-else-if="device.type === '2' || device.type === 2" class="dual-switch-area">
 						<view class="dual-switch-item">
-							<text class="switch-label">左</text>
+							<view class="dual-switch-header">
+								<view class="channel-dot left"></view>
+								<text class="switch-status-text" :class="{ 'is-on': device.leftStatus === 'on' }">
+									{{ device.leftStatus === 'on' ? '左-运行中' : '左-已关闭' }}
+								</text>
+							</view>
 							<view 
 								class="switch" 
 								:class="{ active: device.leftStatus === 'on' }" 
@@ -83,9 +159,13 @@
 								<view class="switch-circle"></view>
 							</view>
 						</view>
-						<!-- 右开关 -->
 						<view class="dual-switch-item">
-							<text class="switch-label">右</text>
+							<view class="dual-switch-header">
+								<view class="channel-dot right"></view>
+								<text class="switch-status-text" :class="{ 'is-on': device.rightStatus === 'on' }">
+									{{ device.rightStatus === 'on' ? '右-运行中' : '右-已关闭' }}
+								</text>
+							</view>
 							<view 
 								class="switch" 
 								:class="{ active: device.rightStatus === 'on' }" 
@@ -95,6 +175,7 @@
 							</view>
 						</view>
 					</view>
+				</view>
 			</view>
 		</view>
 	</view>
@@ -804,273 +885,368 @@ export default {
 </script>
 
 <style>
-/* 页面根容器样式 */
 .content {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-	padding: 20rpx;
-	padding-bottom: 120rpx;
+	background: #0D0D1A;
+	padding: 20rpx 24rpx;
+	padding-bottom: 140rpx;
+	position: relative;
+	overflow: hidden;
 }
 
-/* 未登录提示样式 */
+.bg-decoration {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.glow {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(100rpx);
+}
+
+.glow-1 {
+	width: 300rpx;
+	height: 300rpx;
+	background: rgba(0, 230, 118, 0.04);
+	top: -80rpx;
+	right: -60rpx;
+}
+
+.glow-2 {
+	width: 250rpx;
+	height: 250rpx;
+	background: rgba(0, 176, 255, 0.03);
+	bottom: 300rpx;
+	left: -80rpx;
+}
+
 .login-tip {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	background-color: rgba(255, 255, 255, 0.95);
-	border-radius: 30rpx;
-	padding: 60rpx 40rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	margin-top: 100rpx;
-	backdrop-filter: blur(10rpx);
+	background: rgba(30, 30, 45, 0.8);
+	border-radius: 24rpx;
+	padding: 80rpx 40rpx;
+	margin-top: 120rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	position: relative;
+	z-index: 1;
+}
+
+.login-tip-icon {
+	margin-bottom: 24rpx;
 }
 
 .login-tip-text {
-	font-size: 32rpx;
-	color: #333333;
-	margin-bottom: 30rpx;
+	font-size: 30rpx;
+	color: #B0BEC5;
+	margin-bottom: 40rpx;
 	text-align: center;
-	font-weight: 500;
 }
 
 .login-button {
-	width: 200rpx;
-	height: 60rpx;
-	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
-	color: #ffffff;
+	width: 240rpx;
+	height: 72rpx;
+	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+	color: #0D0D1A;
 	font-size: 28rpx;
 	font-weight: 600;
-	border-radius: 30rpx;
-	box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.3);
+	border-radius: 16rpx;
+	border: none;
+	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
 	transition: all 0.3s ease;
 }
 
 .login-button:active {
 	transform: scale(0.95);
-	box-shadow: 0 2rpx 6rpx rgba(0, 122, 255, 0.3);
 }
 
-/* 设备列表容器 */
 .device-list {
 	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	justify-content: space-between;
-	align-items: flex-start;
-}
-
-/* 卡片容器样式 */
-.card {
-	width: calc(50% - 15rpx);
-	min-height: 600rpx;
-	background-color: rgba(255, 255, 255, 0.95);
-	border-radius: 30rpx;
-	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-	align-items: center;
-	padding: 30rpx 20rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	margin-bottom: 30rpx;
-	box-sizing: border-box;
-	backdrop-filter: blur(10rpx);
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.card:hover {
-	transform: translateY(-5rpx);
-	box-shadow: 0 15rpx 40rpx rgba(0, 0, 0, 0.15);
-}
-
-/* 卡片头部区域样式 */
-.card-header {
-	width: 100%;
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 20rpx;
+	gap: 24rpx;
 	position: relative;
+	z-index: 1;
 }
 
-/* 卡片标题样式 */
-.card-title {
-	font-size: 36rpx;
-	color: #333333;
-	font-weight: 700;
-	flex: 1;
-	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
-}
-
-/* 操作按钮容器 */
-.card-actions {
-	display: flex;
-	align-items: center;
-}
-
-/* 编辑按钮样式 */
-.edit-button {
-	width: 80rpx;
-	height: 40rpx;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	margin-right: 10rpx;
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	border-radius: 20rpx;
-	padding: 5rpx 10rpx;
-}
-
-.edit-button:active {
-	background-color: rgba(0, 122, 255, 0.1);
-	transform: scale(0.95);
-}
-
-.edit-icon {
-	font-size: 28rpx;
-	color: #007AFF;
-	font-weight: 600;
-	line-height: 1;
-	white-space: nowrap;
-}
-
-/* 删除按钮样式 */
-.delete-button {
-	width: 80rpx;
-	height: 40rpx;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	border-radius: 20rpx;
-	padding: 5rpx 10rpx;
-}
-
-.delete-button:active {
-	background-color: rgba(255, 0, 0, 0.1);
-	transform: scale(0.95);
-}
-
-.delete-icon {
-	font-size: 28rpx;
-	color: #ff3b30;
-	font-weight: 600;
-	line-height: 1;
-	white-space: nowrap;
-}
-
-/* 设备信息区域样式 */
-.device-info {
-	display: flex;
-	flex-direction: column;
-	gap: 8rpx;
-	width: 100%;
-	word-wrap: break-word;
-	word-break: break-all;
-	background-color: rgba(255, 255, 255, 0.8);
-	padding: 20rpx;
-	border-radius: 20rpx;
-	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
-}
-
-/* 信息文本样式 */
-.info-text {
-	font-size: 24rpx;
-	color: #666666;
-	font-weight: 400;
-}
-
-/* 开关容器样式 */
-.switch-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	width: 100%;
-	padding: 20rpx 0;
-}
-
-/* 开关组件基础样式 */
-.switch {
-	width: 120rpx;
-	height: 60rpx;
-	background-color: #e0e0e0;
-	border-radius: 30rpx;
-	position: relative;
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	cursor: pointer;
-	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
-}
-
-/* 开关激活状态样式 */
-.switch.active {
-	background-color: #4CD964;
-	box-shadow: inset 0 2rpx 4rpx rgba(76, 217, 100, 0.4);
-}
-
-/* 开关圆形滑块样式 */
-.switch-circle {
-	width: 52rpx;
-	height: 52rpx;
-	background-color: #ffffff;
-	border-radius: 50%;
-	position: absolute;
-	top: 4rpx;
-	left: 4rpx;
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.2);
-}
-
-/* 开关激活状态下圆形滑块位置 */
-.switch.active .switch-circle {
-	left: 64rpx;
-	box-shadow: 0 3rpx 6rpx rgba(0, 0, 0, 0.3);
-}
-
-/* 双开关容器样式 */
-.dual-switch-container {
-	display: flex;
-	justify-content: space-around;
-	align-items: center;
-	width: 100%;
-	padding: 20rpx 0;
-}
-
-/* 双开关项样式 */
-.dual-switch-item {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 10rpx;
-}
-
-/* 开关标签样式 */
-.switch-label {
-	font-size: 24rpx;
-	color: #666666;
-	font-weight: 500;
-}
-
-/* 无设备提示样式 */
 .no-device {
 	display: flex;
-	justify-content: center;
+	flex-direction: column;
 	align-items: center;
-	width: 100%;
-	height: 400rpx;
-	background-color: rgba(255, 255, 255, 0.95);
-	border-radius: 30rpx;
-	margin-top: 20rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(10rpx);
+	justify-content: center;
+	padding: 100rpx 40rpx;
+	background: rgba(30, 30, 45, 0.5);
+	border-radius: 24rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	margin-top: 60rpx;
+}
+
+.no-device-icon {
+	margin-bottom: 24rpx;
 }
 
 .no-device-text {
 	font-size: 32rpx;
-	color: #999999;
-	text-align: center;
+	color: #757575;
+	font-weight: 600;
+	margin-bottom: 12rpx;
+}
+
+.no-device-sub {
+	font-size: 24rpx;
+	color: #424242;
+}
+
+.card {
+	width: 100%;
+	background: rgba(30, 30, 45, 0.8);
+	border-radius: 24rpx;
+	padding: 28rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	transition: all 0.3s ease;
+}
+
+.card:active {
+	border-color: rgba(0, 230, 118, 0.2);
+}
+
+.card-top {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 8rpx;
+}
+
+.device-icon-wrapper {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 18rpx;
+	background: rgba(44, 44, 62, 0.8);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+	color: #757575;
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	transition: all 0.3s ease;
+}
+
+.device-icon-wrapper.is-on {
+	background: rgba(0, 230, 118, 0.1);
+	color: #00E676;
+	border-color: rgba(0, 230, 118, 0.3);
+	box-shadow: 0 0 16rpx rgba(0, 230, 118, 0.15);
+}
+
+.card-title-area {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.card-title {
+	font-size: 32rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	margin-bottom: 4rpx;
+}
+
+.card-topic {
+	font-size: 22rpx;
+	color: #616161;
+}
+
+.card-actions {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.action-btn {
+	width: 56rpx;
+	height: 56rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 14rpx;
+	transition: all 0.2s ease;
+}
+
+.edit-btn {
+	background: rgba(0, 176, 255, 0.1);
+	color: #00B0FF;
+}
+
+.edit-btn:active {
+	background: rgba(0, 176, 255, 0.2);
+	transform: scale(0.92);
+}
+
+.delete-btn {
+	background: rgba(255, 82, 82, 0.1);
+	color: #FF5252;
+}
+
+.delete-btn:active {
+	background: rgba(255, 82, 82, 0.2);
+	transform: scale(0.92);
+}
+
+.card-divider {
+	height: 1rpx;
+	background: rgba(51, 51, 85, 0.4);
+	margin: 20rpx 0;
+}
+
+.device-info {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.info-section-title {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	margin-top: 8rpx;
+	margin-bottom: 4rpx;
+}
+
+.section-dot {
+	width: 8rpx;
+	height: 8rpx;
+	border-radius: 50%;
+}
+
+.section-dot.left {
+	background: #00B0FF;
+}
+
+.section-dot.right {
+	background: #FFD600;
+}
+
+.section-label {
+	font-size: 22rpx;
+	color: #757575;
+	font-weight: 600;
+	letter-spacing: 1rpx;
+}
+
+.info-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 6rpx 0;
+}
+
+.info-label {
+	font-size: 24rpx;
+	color: #757575;
+}
+
+.info-value {
+	font-size: 24rpx;
+	color: #B0BEC5;
+}
+
+.info-value.highlight {
+	color: #00E676;
+	font-weight: 600;
+}
+
+.switch-area {
+	display: flex;
+	flex-direction: column;
+}
+
+.switch-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8rpx 0;
+}
+
+.switch-status-text {
+	font-size: 26rpx;
+	color: #757575;
 	font-weight: 500;
+}
+
+.switch-status-text.is-on {
+	color: #00E676;
+}
+
+.dual-switch-area {
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.dual-switch-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.dual-switch-header {
+	display: flex;
+	align-items: center;
+	gap: 10rpx;
+}
+
+.channel-dot {
+	width: 10rpx;
+	height: 10rpx;
+	border-radius: 50%;
+}
+
+.channel-dot.left {
+	background: #00B0FF;
+}
+
+.channel-dot.right {
+	background: #FFD600;
+}
+
+.switch {
+	width: 100rpx;
+	height: 52rpx;
+	background: rgba(44, 44, 62, 0.8);
+	border-radius: 26rpx;
+	position: relative;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	border: 1rpx solid rgba(51, 51, 85, 0.6);
+}
+
+.switch.active {
+	background: rgba(0, 230, 118, 0.2);
+	border-color: rgba(0, 230, 118, 0.4);
+	box-shadow: 0 0 16rpx rgba(0, 230, 118, 0.2);
+}
+
+.switch-circle {
+	width: 42rpx;
+	height: 42rpx;
+	background: #757575;
+	border-radius: 50%;
+	position: absolute;
+	top: 4rpx;
+	left: 4rpx;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch.active .switch-circle {
+	left: 52rpx;
+	background: #00E676;
+	box-shadow: 0 0 12rpx rgba(0, 230, 118, 0.5);
 }
 </style>

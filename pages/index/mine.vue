@@ -1,82 +1,107 @@
 <template>
 	<view class="content">
-		<!-- 顶部退出按钮（仅登录状态显示） -->
+		<view class="bg-decoration">
+			<view class="glow glow-1"></view>
+			<view class="glow glow-2"></view>
+		</view>
+		
 		<view v-if="isLoggedIn" class="header">
-			<view class="login-btn" @click="handleLoginLogout">
-				<text class="login-text">退出</text>
+			<view class="logout-btn" @click="handleLoginLogout">
+				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+					<polyline points="16 17 21 12 16 7"/>
+					<line x1="21" y1="12" x2="9" y2="12"/>
+				</svg>
+				<text class="logout-text">退出</text>
 			</view>
 		</view>
 		
-		<view class="user-info">
-			<image class="avatar" :src="avatar || '/static/logo.png'"></image>
-			<!-- 未登录时显示登录按钮，登录时显示用户名 -->
-			<view v-if="!isLoggedIn" class="login-btn user-login-btn" @click="handleLoginLogout">
-				<text class="login-text">登录</text>
+		<view class="profile-section">
+			<view class="avatar-wrapper">
+				<image class="avatar" :src="avatar || '/static/logo.png'"></image>
+				<view class="avatar-ring"></view>
 			</view>
-			<text v-else class="username">{{ username }}</text>
-		</view>
-		<view class="menu-list">
-			<view class="menu-item" v-for="(item, index) in menuList" :key="index" @click="handleMenuClick(item)">
-				<text class="menu-icon">{{ item.icon }}</text>
-				<text class="menu-text">{{ item.text }}</text>
-				<text class="menu-arrow">></text>
+			<view v-if="!isLoggedIn" class="login-btn-wrapper" @click="handleLoginLogout">
+				<text class="login-text">点击登录</text>
+			</view>
+			<view v-else class="user-info-area">
+				<text class="username">{{ username }}</text>
+				<text class="user-role">设备管理员</text>
 			</view>
 		</view>
 		
-
+		<view class="menu-section">
+			<view class="menu-group">
+				<view class="menu-item" v-for="(item, index) in menuList" :key="index" @click="handleMenuClick(item)">
+					<view class="menu-icon-wrapper" :style="{ background: item.bgColor }">
+						<text class="menu-icon-emoji">{{ item.icon }}</text>
+					</view>
+					<text class="menu-text">{{ item.text }}</text>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#424242" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="9 18 15 12 9 6"/>
+					</svg>
+				</view>
+			</view>
+		</view>
+		
+		<view class="version-info">
+			<text class="version-text">智慧农业 v1.0.1</text>
+		</view>
 	</view>
 </template>
 
 <script>
-	// 导入 TabBar 组件
 	import TabBar from '../components/TabBar.vue'
 	export default {
 		components: {
-			TabBar // 注册 TabBar 组件
+			TabBar
 		},
 		data() {
 			return {
-				isLoggedIn: false, // 登录状态
-				username: '', // 用户名
-				avatar: '', // 头像
+				isLoggedIn: false,
+				username: '',
+				avatar: '',
 				menuList: [
 					{
-						icon: '⚙️',
-						text: '设置'
+						icon: '⚙',
+						text: '设置',
+						bgColor: 'rgba(0, 176, 255, 0.1)'
 					},
 					{
 						icon: '📊',
-						text: '数据统计'
+						text: '数据统计',
+						bgColor: 'rgba(255, 214, 0, 0.1)'
 					},
 					{
 						icon: '🔔',
-						text: '消息通知'
+						text: '消息通知',
+						bgColor: 'rgba(0, 230, 118, 0.1)'
 					},
 					{
 						icon: '❓',
-						text: '帮助与反馈'
+						text: '帮助与反馈',
+						bgColor: 'rgba(0, 176, 255, 0.1)'
 					},
 					{
-						icon: 'ℹ️',
-						text: '关于我们'
+						icon: 'ℹ',
+						text: '关于我们',
+						bgColor: 'rgba(176, 190, 197, 0.1)'
 					},
 					{
 						icon: '🚪',
-						text: '注销'
+						text: '注销',
+						bgColor: 'rgba(255, 82, 82, 0.1)'
 					}
 				]
 			}
 		},
 		onLoad() {
-			// 页面加载时检查登录状态
 			this.checkLoginStatus();
 		},
 		onShow() {
-			// 页面显示时检查登录状态，确保登录后信息更新
 			this.checkLoginStatus();
 		},
 		methods: {
-			// 检查登录状态
 			checkLoginStatus() {
 				const token = uni.getStorageSync('token');
 				const user = uni.getStorageSync('userInfo');
@@ -91,15 +116,12 @@
 				}
 			},
 			
-			// 处理登录/退出点击
 			handleLoginLogout() {
 				if (!this.isLoggedIn) {
-					// 未登录，跳转到登录页面
 					uni.navigateTo({
 						url: '/pages/index/login'
 					});
 				} else {
-					// 已登录，退出登录
 					uni.showModal({
 						title: '退出确认',
 						content: '确定要退出登录吗？',
@@ -107,7 +129,6 @@
 						cancelText: '取消',
 						success: (res) => {
 							if (res.confirm) {
-								// 清除本地存储
 								uni.removeStorageSync('token');
 								uni.removeStorageSync('userInfo');
 								this.isLoggedIn = false;
@@ -123,10 +144,8 @@
 				}
 			},
 			
-			// 处理菜单点击
 			handleMenuClick(item) {
 				if (item.text === '注销') {
-					// 提示用户确认注销
 					uni.showModal({
 						title: '注销确认',
 						content: '确定要注销并删除账户吗？',
@@ -134,18 +153,14 @@
 						cancelText: '取消',
 						success: (res) => {
 							if (res.confirm) {
-								// 调用注销API
 								this.logout();
 							}
 						}
 					});
 				} else if (item.text === '设置') {
-					// 跳转到设置页面
-					// 这里可以添加设置页面的跳转逻辑
 				}
 			},
 			
-			// 注销并删除用户
 			logout() {
 				const token = uni.getStorageSync('token');
 				if (!token) {
@@ -156,7 +171,6 @@
 					return;
 				}
 				
-				// 调用注销API
 				uni.request({
 					url: 'http://175.24.203.151:3000/api/user/delete',
 					method: 'DELETE',
@@ -165,7 +179,6 @@
 					},
 					success: (res) => {
 						if (res.data.code === 200) {
-							// 清除本地存储
 							uni.removeStorageSync('token');
 							uni.removeStorageSync('userInfo');
 							this.isLoggedIn = false;
@@ -195,137 +208,216 @@
 </script>
 
 <style>
-	.content {
-		display: flex;
-		flex-direction: column;
-		min-height: 100vh;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		padding-bottom: 120rpx;
-	}
+.content {
+	display: flex;
+	flex-direction: column;
+	min-height: 100vh;
+	background: #0D0D1A;
+	padding-bottom: 120rpx;
+	position: relative;
+	overflow: hidden;
+}
 
-	.header {
-		padding: 20rpx;
-		background-color: rgba(255, 255, 255, 0.9);
-		text-align: left;
-		display: flex;
-		justify-content: flex-start;
-		align-items: center;
-		backdrop-filter: blur(10rpx);
-	}
+.bg-decoration {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+}
 
-	.login-btn {
-		display: inline-block;
-		padding: 12rpx 24rpx;
-		background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-		color: white;
-		border-radius: 25rpx;
-		font-size: 28rpx;
-		font-weight: 600;
-		transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-		box-shadow: 0 4rpx 12rpx rgba(76, 175, 80, 0.3);
-	}
+.glow {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(100rpx);
+}
 
-	.login-btn:active {
-		transform: scale(0.95);
-		box-shadow: 0 2rpx 6rpx rgba(76, 175, 80, 0.3);
-	}
+.glow-1 {
+	width: 300rpx;
+	height: 300rpx;
+	background: rgba(0, 230, 118, 0.04);
+	top: -60rpx;
+	left: -80rpx;
+}
 
-	.login-text {
-		font-size: 28rpx;
-	}
+.glow-2 {
+	width: 200rpx;
+	height: 200rpx;
+	background: rgba(0, 176, 255, 0.03);
+	top: 400rpx;
+	right: -60rpx;
+}
 
-	.user-info {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		padding: 60rpx 0;
-		background-color: rgba(255, 255, 255, 0.95);
-		margin: 20rpx;
-		border-radius: 30rpx;
-		backdrop-filter: blur(10rpx);
-		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	}
+.header {
+	padding: 20rpx 30rpx;
+	display: flex;
+	justify-content: flex-end;
+	position: relative;
+	z-index: 2;
+}
 
-	.avatar {
-		width: 120rpx;
-		height: 120rpx;
-		border-radius: 60rpx;
-		margin-bottom: 20rpx;
-		border: 3rpx solid #4CAF50;
-		box-shadow: 0 5rpx 15rpx rgba(0, 0, 0, 0.1);
-		transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	}
+.logout-btn {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 12rpx 20rpx;
+	background: rgba(255, 82, 82, 0.1);
+	border-radius: 12rpx;
+	border: 1rpx solid rgba(255, 82, 82, 0.2);
+	transition: all 0.3s ease;
+}
 
-	.avatar:hover {
-		transform: scale(1.1);
-	}
+.logout-btn:active {
+	background: rgba(255, 82, 82, 0.2);
+	transform: scale(0.95);
+}
 
-	.username {
-		font-size: 36rpx;
-		color: #333333;
-		font-weight: 700;
-		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
-	}
+.logout-text {
+	font-size: 24rpx;
+	color: #FF5252;
+	font-weight: 500;
+}
 
-	/* 用户名称位置的登录按钮样式 */
-	.user-login-btn {
-		margin-top: 20rpx;
-		padding: 15rpx 40rpx;
-		font-size: 32rpx;
-	}
+.profile-section {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 50rpx 30rpx 40rpx;
+	background: rgba(30, 30, 45, 0.5);
+	margin: 10rpx 24rpx 24rpx;
+	border-radius: 24rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	position: relative;
+	z-index: 1;
+}
 
-	.menu-list {
-		display: flex;
-		flex-direction: column;
-		background-color: rgba(255, 255, 255, 0.95);
-		margin: 0 20rpx;
-		border-radius: 30rpx;
-		backdrop-filter: blur(10rpx);
-		box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-		overflow: hidden;
-	}
+.avatar-wrapper {
+	position: relative;
+	margin-bottom: 24rpx;
+}
 
-	.menu-item {
-		display: flex;
-		align-items: center;
-		padding: 30rpx;
-		border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
-		transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-		position: relative;
-		overflow: hidden;
-	}
+.avatar {
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
+	position: relative;
+	z-index: 1;
+}
 
-	.menu-item:last-child {
-		border-bottom: none;
-	}
+.avatar-ring {
+	position: absolute;
+	top: -8rpx;
+	left: -8rpx;
+	right: -8rpx;
+	bottom: -8rpx;
+	border-radius: 68rpx;
+	border: 2rpx solid rgba(0, 230, 118, 0.3);
+}
 
-	.menu-item:active {
-		background-color: rgba(0, 0, 0, 0.05);
-		transform: translateX(10rpx);
-	}
+.login-btn-wrapper {
+	margin-top: 12rpx;
+	padding: 14rpx 48rpx;
+	background: rgba(0, 230, 118, 0.1);
+	border-radius: 12rpx;
+	border: 1rpx solid rgba(0, 230, 118, 0.3);
+	transition: all 0.3s ease;
+}
 
-	.menu-icon {
-		font-size: 40rpx;
-		margin-right: 20rpx;
-		z-index: 1;
-	}
+.login-btn-wrapper:active {
+	background: rgba(0, 230, 118, 0.2);
+	transform: scale(0.95);
+}
 
-	.menu-text {
-		flex: 1;
-		font-size: 32rpx;
-		color: #333333;
-		font-weight: 500;
-		z-index: 1;
-	}
+.login-text {
+	font-size: 28rpx;
+	color: #00E676;
+	font-weight: 600;
+}
 
-	.menu-arrow {
-		font-size: 32rpx;
-		color: #999999;
-		z-index: 1;
-		transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-	}
+.user-info-area {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
 
-	.menu-item:active .menu-arrow {
-		transform: translateX(5rpx);
-	}
+.username {
+	font-size: 36rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	margin-bottom: 8rpx;
+}
+
+.user-role {
+	font-size: 22rpx;
+	color: #757575;
+	padding: 4rpx 16rpx;
+	background: rgba(0, 230, 118, 0.1);
+	border-radius: 8rpx;
+}
+
+.menu-section {
+	position: relative;
+	z-index: 1;
+	margin: 0 24rpx;
+}
+
+.menu-group {
+	display: flex;
+	flex-direction: column;
+	background: rgba(30, 30, 45, 0.5);
+	border-radius: 24rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.3);
+	overflow: hidden;
+}
+
+.menu-item {
+	display: flex;
+	align-items: center;
+	padding: 28rpx 30rpx;
+	border-bottom: 1rpx solid rgba(51, 51, 85, 0.2);
+	transition: all 0.2s ease;
+}
+
+.menu-item:last-child {
+	border-bottom: none;
+}
+
+.menu-item:active {
+	background: rgba(44, 44, 62, 0.5);
+}
+
+.menu-icon-wrapper {
+	width: 56rpx;
+	height: 56rpx;
+	border-radius: 14rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.menu-icon-emoji {
+	font-size: 28rpx;
+}
+
+.menu-text {
+	flex: 1;
+	font-size: 30rpx;
+	color: #E0E0E0;
+	font-weight: 500;
+}
+
+.version-info {
+	display: flex;
+	justify-content: center;
+	padding: 40rpx 0;
+	position: relative;
+	z-index: 1;
+}
+
+.version-text {
+	font-size: 22rpx;
+	color: #424242;
+}
 </style>

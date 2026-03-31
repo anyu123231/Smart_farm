@@ -1,46 +1,87 @@
 <template>
 	<view class="content">
-		<!-- 页面标题 -->
-		<view class="page-header">
-			<view class="header-left" @click="goBack">
-				<text class="back-icon">←</text>
-			</view>
-			<text class="page-title">{{ device.name }} {{ statusText }}</text>
-			<view class="header-right"></view>
+		<view class="bg-decoration">
+			<view class="glow glow-1"></view>
+			<view class="glow glow-2"></view>
 		</view>
 		
-		<!-- 设置内容 -->
+		<view class="page-header">
+			<view class="header-back" @click="goBack">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E0E0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="15 18 9 12 15 6"/>
+				</svg>
+			</view>
+			<view class="header-info">
+				<text class="page-title">{{ device.name }}</text>
+				<text class="page-subtitle">定时设置</text>
+			</view>
+			<view class="header-right">
+				<view class="status-badge" :class="{ 'is-on': isOn }">
+					<view class="status-dot"></view>
+					<text class="status-text">{{ statusText }}</text>
+				</view>
+			</view>
+		</view>
+		
 		<view class="settings-container">
-			<!-- 关闭时间设置 -->
-			<view v-if="isOn || hasOpenTime" class="form-item">
-				<text class="label">关闭时间</text>
-				<view class="datetime-picker">
-					<uni-datetime-picker 
-						v-model="closeTime" 
-						type="datetime" 
-						:start="minDateTime" 
-						@change="onCloseTimeChange"
-					/>
+			<view class="section-header">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+				</svg>
+				<text class="section-title">定时任务配置</text>
+			</view>
+			
+			<view class="settings-card">
+				<view v-if="isOn || hasOpenTime" class="form-item">
+					<view class="form-label-row">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF5252" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+						</svg>
+						<text class="label">关闭时间</text>
+					</view>
+					<view class="datetime-picker">
+						<uni-datetime-picker 
+							v-model="closeTime" 
+							type="datetime" 
+							:start="minDateTime" 
+							@change="onCloseTimeChange"
+						/>
+					</view>
+				</view>
+				
+				<view v-if="!isOn" class="form-item">
+					<view class="form-label-row">
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+						</svg>
+						<text class="label">开启时间</text>
+					</view>
+					<view class="datetime-picker">
+						<uni-datetime-picker 
+							v-model="openTime" 
+							type="datetime" 
+							:start="minDateTime" 
+							@change="onOpenTimeChange"
+						/>
+					</view>
 				</view>
 			</view>
 			
-			<!-- 开启时间设置（仅关闭状态时显示） -->
-			<view v-if="!isOn" class="form-item">
-				<text class="label">开启时间</text>
-				<view class="datetime-picker">
-					<uni-datetime-picker 
-						v-model="openTime" 
-						type="datetime" 
-						:start="minDateTime" 
-						@change="onOpenTimeChange"
-					/>
-				</view>
+			<view class="tips-bar">
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#757575" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+				</svg>
+				<text class="tips-text">{{ isOn ? '设备已开启，设置关闭时间后将自动关闭' : '请先设置开启时间，再设置关闭时间' }}</text>
 			</view>
 		</view>
 		
-		<!-- 保存按钮 -->
 		<view class="button-container">
-			<button class="save-button" @click="saveSettings">保存设置</button>
+			<button class="save-button" @click="saveSettings">
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0D0D1A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="20 6 9 17 4 12"/>
+				</svg>
+				<text class="btn-text">保存设置</text>
+			</button>
 		</view>
 	</view>
 </template>
@@ -271,103 +312,242 @@ export default {
 </script>
 
 <style>
-/* 页面根容器样式 */
 .content {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-	padding: 20rpx;
+	background: #0D0D1A;
+	padding: 24rpx;
+	position: relative;
+	overflow: hidden;
 }
 
-/* 页面标题样式 */
+.bg-decoration {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.glow {
+	position: absolute;
+	border-radius: 50%;
+	filter: blur(100rpx);
+}
+
+.glow-1 {
+	width: 300rpx;
+	height: 300rpx;
+	background: rgba(0, 176, 255, 0.04);
+	top: -80rpx;
+	right: -60rpx;
+}
+
+.glow-2 {
+	width: 250rpx;
+	height: 250rpx;
+	background: rgba(0, 230, 118, 0.03);
+	bottom: 100rpx;
+	left: -80rpx;
+}
+
 .page-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	padding: 20rpx 0;
 	margin-bottom: 30rpx;
+	position: relative;
+	z-index: 1;
 }
 
-.header-left, .header-right {
-	width: 80rpx;
+.header-back {
+	width: 64rpx;
+	height: 64rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(30, 30, 45, 0.6);
+	border-radius: 16rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
 }
 
-.back-icon {
-	font-size: 40rpx;
-	color: #ffffff;
-	font-weight: 700;
+.header-info {
+	flex: 1;
+	margin-left: 20rpx;
 }
 
 .page-title {
 	font-size: 36rpx;
 	font-weight: 700;
-	color: #ffffff;
-	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.2);
+	color: #FFFFFF;
+	margin-bottom: 4rpx;
 }
 
-/* 设置容器样式 */
+.page-subtitle {
+	font-size: 24rpx;
+	color: #757575;
+}
+
+.header-right {
+	width: auto;
+}
+
+.status-badge {
+	display: flex;
+	align-items: center;
+	background: rgba(255, 82, 82, 0.12);
+	border: 1rpx solid rgba(255, 82, 82, 0.25);
+	border-radius: 20rpx;
+	padding: 8rpx 20rpx;
+}
+
+.status-badge.is-on {
+	background: rgba(0, 230, 118, 0.12);
+	border-color: rgba(0, 230, 118, 0.25);
+}
+
+.status-dot {
+	width: 12rpx;
+	height: 12rpx;
+	border-radius: 50%;
+	background: #FF5252;
+	margin-right: 10rpx;
+}
+
+.status-badge.is-on .status-dot {
+	background: #00E676;
+	box-shadow: 0 0 8rpx rgba(0, 230, 118, 0.5);
+}
+
+.status-text {
+	font-size: 22rpx;
+	color: #B0BEC5;
+	font-weight: 600;
+}
+
+.status-badge.is-on .status-text {
+	color: #00E676;
+}
+
 .settings-container {
-	background-color: rgba(255, 255, 255, 0.95);
-	border-radius: 30rpx;
+	background: rgba(30, 30, 45, 0.6);
+	border-radius: 24rpx;
 	padding: 30rpx;
 	margin-bottom: 30rpx;
-	box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.1);
-	backdrop-filter: blur(10rpx);
+	border: 1rpx solid rgba(51, 51, 85, 0.4);
+	position: relative;
+	z-index: 1;
 }
 
-/* 表单项样式 */
+.section-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 24rpx;
+}
+
+.section-title {
+	font-size: 28rpx;
+	color: #E0E0E0;
+	font-weight: 700;
+	margin-left: 12rpx;
+}
+
+.settings-card {
+	background: rgba(44, 44, 62, 0.8);
+	border-radius: 18rpx;
+	padding: 28rpx;
+	border: 1rpx solid rgba(51, 51, 85, 0.6);
+}
+
 .form-item {
-	margin-bottom: 30rpx;
+	margin-bottom: 32rpx;
 }
 
 .form-item:last-child {
 	margin-bottom: 0;
 }
 
-/* 标签样式 */
+.form-label-row {
+	display: flex;
+	align-items: center;
+	margin-bottom: 16rpx;
+}
+
+.form-label-row svg {
+	margin-right: 10rpx;
+}
+
 .label {
-	display: block;
-	font-size: 28rpx;
-	color: #333333;
-	margin-bottom: 15rpx;
+	font-size: 26rpx;
+	color: #B0BEC5;
 	font-weight: 600;
 }
 
-/* 日期时间选择器容器 */
 .datetime-picker {
-	background-color: rgba(255, 255, 255, 0.8);
-	border: 2rpx solid #e0e0e0;
-	border-radius: 20rpx;
+	background: rgba(30, 30, 45, 0.8);
+	border-radius: 14rpx;
 	padding: 20rpx;
-	box-shadow: inset 0 2rpx 4rpx rgba(0, 0, 0, 0.05);
+	border: 1rpx solid rgba(51, 51, 85, 0.6);
+	transition: all 0.3s ease;
 }
 
-/* 按钮容器样式 */
+.tips-bar {
+	display: flex;
+	align-items: flex-start;
+	margin-top: 24rpx;
+	padding: 20rpx;
+	background: rgba(0, 176, 255, 0.06);
+	border-radius: 14rpx;
+	border: 1rpx solid rgba(0, 176, 255, 0.1);
+}
+
+.tips-bar svg {
+	margin-top: 2rpx;
+	margin-right: 10rpx;
+	flex-shrink: 0;
+}
+
+.tips-text {
+	font-size: 22rpx;
+	color: #757575;
+	line-height: 1.5;
+}
+
 .button-container {
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	padding: 20rpx 0;
+	position: relative;
+	z-index: 1;
 }
 
-/* 保存按钮样式 */
 .save-button {
-	width: 80%;
-	height: 90rpx;
-	background: linear-gradient(135deg, #007AFF 0%, #0056b3 100%);
-	color: #ffffff;
+	width: 100%;
+	height: 96rpx;
+	background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+	color: #0D0D1A;
 	font-size: 32rpx;
 	font-weight: 700;
-	border-radius: 45rpx;
+	border-radius: 16rpx;
 	border: none;
-	box-shadow: 0 6rpx 18rpx rgba(0, 122, 255, 0.4);
-	transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+	box-shadow: 0 4rpx 20rpx rgba(0, 230, 118, 0.3);
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	letter-spacing: 2rpx;
 }
 
 .save-button:active {
-	background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
 	transform: scale(0.98);
-	box-shadow: 0 3rpx 9rpx rgba(0, 122, 255, 0.4);
+	box-shadow: 0 2rpx 10rpx rgba(0, 230, 118, 0.3);
+}
+
+.btn-text {
+	margin-left: 10rpx;
 }
 </style>
