@@ -3,17 +3,15 @@ const express = require('express')
 const mysql = require('mysql2/promise')
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+const cloudbase = require('@cloudbase/node-sdk')
 
-// 创建 Express 应用
 const app = express()
 const PORT = process.env.PORT || 3000
 
-// 中间件配置
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-// 数据库连接配置
 const dbConfig = {
 	host: process.env.DB_HOST || 'localhost',
 	port: process.env.DB_PORT || 3306,
@@ -26,12 +24,29 @@ const dbConfig = {
 	queueLimit: 0
 }
 
-// 创建数据库连接池
 const pool = mysql.createPool(dbConfig)
 
-// JWT配置
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'
+
+const tcbApp = cloudbase.init({
+	env: process.env.CLOUDBASE_ENV_ID || 'valvecontrol-6gosonkm966694e0',
+	secretId: process.env.CLOUDBASE_SECRET_ID,
+	secretKey: process.env.CLOUDBASE_SECRET_KEY
+})
+
+const SYSTEM_PROMPT = `你是一位专业的智慧农业助手，具备以下能力：
+
+1. **作物种植指导**：提供各类农作物的种植技术、管理方法、病虫害防治建议
+2. **环境分析**：根据温湿度、土壤、光照等数据，给出科学的种植建议
+3. **设备管理**：帮助用户理解和使用智慧农业物联网设备
+4. **农事决策**：根据天气、季节、作物生长阶段提供农事安排建议
+
+回答要求：
+- 使用简洁易懂的语言
+- 提供具体可操作的建议
+- 适当使用emoji让回答更生动
+- 如果涉及专业术语，请简单解释`
 
 // 健康检查接口
 app.get('/health', (req, res) => {
@@ -834,6 +849,229 @@ app.delete('/api/device', verifyToken, async (req, res) => {
 		res.status(500).json({
 			code: 500,
 			message: '服务器内部错误',
+			error: error.message
+		})
+	}
+})
+
+app.post('/api/ai/chat', async (req, res) => {
+	try {
+		const { messages, sessionId } = req.body
+		
+		if (!messages || !Array.isArray(messages)) {
+			return res.status(400).json({
+				code: 400,
+				message: '缺少 messages 参数'
+			})
+		}
+		
+		const ai = tcbApp.ai()
+		const model = ai.createModel('hunyuan-exp')
+		
+		const fullMessages = [
+			{ role: 'system', content: SYSTEM_PROMPT },
+			...messages
+		]
+		
+		const result = await model.generateText({
+			model: 'hunyuan-2.0-instruct-20251111',
+			messages: fullMessages
+		})
+		
+		res.json({
+			code: 200,
+			message: 'AI 响应成功',
+			data: {
+				text: result.text,
+				usage: result.usage,
+				sessionId: sessionId
+			}
+		})
+	} catch (error) {
+		console.error('AI 聊天失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: 'AI 服务错误',
+			error: error.message
+		})
+	}
+})
+
+// 创建对话会话
+app.post('/api/ai/sessions', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		
+		const [result] = await pool.query(
+			'INSERT INTO ai_chat_sessions (user_id) VALUES (?)',
+			[userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '创建会话成功',
+			data: {
+				sessionId: result.insertId
+			}
+		})
+	} catch (error) {
+		console.error('创建会话失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '创建会话失败',
+			error: error.message
+		})
+	}
+})
+
+// 获取用户的所有会话
+app.get('/api/ai/sessions', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		
+		const [rows] = await pool.query(
+			`SELECT s.id, 
+				(SELECT content FROM ai_chat_messages WHERE session_id = s.id AND role = 1 ORDER BY id ASC LIMIT 1) as first_message,
+				s.created_at 
+			FROM ai_chat_sessions s 
+			WHERE s.user_id = ? 
+			ORDER BY s.id DESC`,
+			[userId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '获取会话列表成功',
+			data: rows.map(row => ({
+				id: row.id,
+				session_name: row.first_message ? row.first_message.substring(0, 20) : '新对话',
+				created_at: row.created_at
+			}))
+		})
+	} catch (error) {
+		console.error('获取会话列表失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取会话列表失败',
+			error: error.message
+		})
+	}
+})
+
+// 获取会话的所有消息
+app.get('/api/ai/sessions/:sessionId/messages', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		const sessionId = req.params.sessionId
+		
+		// 验证会话属于当前用户
+		const [session] = await pool.query(
+			'SELECT id FROM ai_chat_sessions WHERE id = ? AND user_id = ?',
+			[sessionId, userId]
+		)
+		
+		if (session.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '会话不存在或无权访问'
+			})
+		}
+		
+		const [rows] = await pool.query(
+			'SELECT role, content FROM ai_chat_messages WHERE session_id = ? ORDER BY id ASC',
+			[sessionId]
+		)
+		
+		res.json({
+			code: 200,
+			message: '获取消息成功',
+			data: rows.map(row => ({
+				role: row.role === 1 ? 'user' : 'assistant',
+				content: row.content
+			}))
+		})
+	} catch (error) {
+		console.error('获取消息失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取消息失败',
+			error: error.message
+		})
+	}
+})
+
+// 保存消息
+app.post('/api/ai/sessions/:sessionId/messages', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		const sessionId = req.params.sessionId
+		const { role, content } = req.body
+		
+		// 验证会话属于当前用户
+		const [session] = await pool.query(
+			'SELECT id FROM ai_chat_sessions WHERE id = ? AND user_id = ?',
+			[sessionId, userId]
+		)
+		
+		if (session.length === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '会话不存在或无权访问'
+			})
+		}
+		
+		// role: user=1, assistant=2
+		const roleId = role === 'user' ? 1 : 2
+		
+		const [result] = await pool.query(
+			'INSERT INTO ai_chat_messages (session_id, role, content) VALUES (?, ?, ?)',
+			[sessionId, roleId, content]
+		)
+		
+		res.json({
+			code: 200,
+			message: '保存消息成功',
+			data: {
+				messageId: result.insertId
+			}
+		})
+	} catch (error) {
+		console.error('保存消息失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '保存消息失败',
+			error: error.message
+		})
+	}
+})
+
+// 删除会话
+app.delete('/api/ai/sessions/:sessionId', verifyToken, async (req, res) => {
+	try {
+		const userId = req.user.id
+		const sessionId = req.params.sessionId
+		
+		const [result] = await pool.query(
+			'DELETE FROM ai_chat_sessions WHERE id = ? AND user_id = ?',
+			[sessionId, userId]
+		)
+		
+		if (result.affectedRows === 0) {
+			return res.status(404).json({
+				code: 404,
+				message: '会话不存在或无权删除'
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '删除会话成功'
+		})
+	} catch (error) {
+		console.error('删除会话失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '删除会话失败',
 			error: error.message
 		})
 	}

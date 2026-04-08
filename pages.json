@@ -38,6 +38,14 @@
 				"navigationBarTitleText": "登录",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/index/ai-chat",
+			"style": {
+				"navigationBarTitleText": "AI助手",
+				"navigationBarBackgroundColor": "#FFFFFF",
+				"navigationBarTextStyle": "black"
+			}
 		}
 	],
 	"globalStyle": {

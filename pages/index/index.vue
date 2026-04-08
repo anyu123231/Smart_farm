@@ -44,15 +44,16 @@
 				</view>
 				<text class="action-text">添加设备</text>
 			</view>
-			<view class="action-card">
-				<view class="action-icon">
-					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFD600" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M18 20V10"/>
-						<path d="M12 20V4"/>
-						<path d="M6 20v-6"/>
+			<view class="action-card" @click="goToAIChat">
+				<view class="action-icon ai-icon">
+					<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9C27B0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
+						<path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+						<line x1="9" y1="9" x2="9.01" y2="9"/>
+						<line x1="15" y1="9" x2="15.01" y2="9"/>
 					</svg>
 				</view>
-				<text class="action-text">数据统计</text>
+				<text class="action-text">AI助手</text>
 			</view>
 		</view>
 		
@@ -80,6 +81,11 @@
 
 		},
 		methods: {
+			goToAIChat() {
+				uni.navigateTo({
+					url: '/pages/index/ai-chat'
+				})
+			},
 			scanQRCode() {
 				uni.scanCode({
 					success: (res) => {
@@ -310,6 +316,11 @@
 	background: #F5F7FA;
 	border-radius: 20rpx;
 	border: 1rpx solid #EEEEEE;
+}
+
+.action-icon.ai-icon {
+	background: linear-gradient(135deg, #F3E5F5 0%, #E1BEE7 100%);
+	border-color: rgba(156, 39, 176, 0.2);
 }
 
 .action-text {

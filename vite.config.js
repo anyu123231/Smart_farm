@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
 import path from 'path'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [uni()],
   define: {
@@ -19,6 +18,13 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['buffer', 'events', 'util', 'url', 'stream-browserify']
+    include: ['buffer', 'events', 'util', 'url', 'stream-browserify', '@cloudbase/js-sdk']
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   }
 })
