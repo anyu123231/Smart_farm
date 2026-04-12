@@ -71,7 +71,7 @@
 					</svg>
 				</view>
 				<text class="welcome-title">智慧农业AI助手</text>
-				<text class="welcome-desc">我可以帮你解答种植、病虫害防治、设备使用等问题</text>
+				<text class="welcome-desc">我可以帮你解答种植、病虫害防治、设备使用等问题；登录后还可让我帮你开关已绑定的设备（请直接说设备名称与开/关）</text>
 				
 				<view class="quick-questions">
 					<text class="quick-title">试试问我：</text>
@@ -164,7 +164,7 @@ export default {
 				'番茄叶子发黄怎么办？',
 				'温室大棚如何通风？',
 				'如何防治蚜虫？',
-				'夏季蔬菜种植建议'
+				'帮我打开第一个设备'
 			],
 			sessions: [],
 			currentSessionId: null,
@@ -180,16 +180,13 @@ export default {
 	},
 	methods: {
 		initAI() {
+			ai.setServerUrl(API_BASE)
 			// #ifdef H5
 			const envId = import.meta.env.VITE_CLOUDBASE_ENV_ID
 			const accessKey = import.meta.env.VITE_CLOUDBASE_ACCESS_KEY
 			if (envId && accessKey) {
 				ai.init(envId, accessKey)
 			}
-			// #endif
-			
-			// #ifndef H5
-			ai.setServerUrl(API_BASE)
 			// #endif
 		},
 		loadToken() {

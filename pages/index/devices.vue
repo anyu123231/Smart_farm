@@ -89,7 +89,7 @@
 							<text class="info-label">关闭时间</text>
 							<text class="info-value">{{ formatTime(device.closeTime) }}</text>
 						</view>
-						<view class="info-row" v-if="device.status === 'off' && device.lastDuration > 0">
+						<view class="info-row" v-if="device.status === 'off' && (device.closeTime || Number(device.lastDuration) > 0)">
 							<text class="info-label">上次时长</text>
 							<text class="info-value">{{ formatDurationBySeconds(device.lastDuration) }}</text>
 						</view>
@@ -111,7 +111,7 @@
 							<text class="info-label">关闭时间</text>
 							<text class="info-value">{{ formatTime(device.leftCloseTime) }}</text>
 						</view>
-						<view class="info-row" v-if="device.leftStatus === 'off' && device.leftLastDuration > 0">
+						<view class="info-row" v-if="device.leftStatus === 'off' && (device.leftCloseTime || Number(device.leftLastDuration) > 0)">
 							<text class="info-label">上次时长</text>
 							<text class="info-value">{{ formatDurationBySeconds(device.leftLastDuration) }}</text>
 						</view>
@@ -131,7 +131,7 @@
 							<text class="info-label">关闭时间</text>
 							<text class="info-value">{{ formatTime(device.rightCloseTime) }}</text>
 						</view>
-						<view class="info-row" v-if="device.rightStatus === 'off' && device.rightLastDuration > 0">
+						<view class="info-row" v-if="device.rightStatus === 'off' && (device.rightCloseTime || Number(device.rightLastDuration) > 0)">
 							<text class="info-label">上次时长</text>
 							<text class="info-value">{{ formatDurationBySeconds(device.rightLastDuration) }}</text>
 						</view>
@@ -896,15 +896,15 @@ export default {
 		
 		// 将秒数转换为可读的时长格式
 		formatDurationBySeconds(seconds) {
-			if (!seconds || seconds <= 0) return "0分钟"
-			const hours = Math.floor(seconds / 3600)
-			const minutes = Math.floor((seconds % 3600) / 60)
-			
+			const s = Number(seconds) || 0
+			if (s <= 0) return '不足1秒'
+			if (s < 60) return `${s}秒`
+			const hours = Math.floor(s / 3600)
+			const minutes = Math.floor((s % 3600) / 60)
 			if (hours > 0) {
 				return `${hours}小时${minutes}分钟`
-			} else {
-				return `${minutes}分钟`
 			}
+			return `${minutes}分钟`
 		},
 		
 		// 编辑设备名称

@@ -7,7 +7,7 @@ const SYSTEM_PROMPT = `你是一位专业的智慧农业助手，具备以下能
 
 1. **作物种植指导**：提供各类农作物的种植技术、管理方法、病虫害防治建议
 2. **环境分析**：根据温湿度、土壤、光照等数据，给出科学的种植建议
-3. **设备管理**：帮助用户理解和使用智慧农业物联网设备
+3. **设备管理**：帮助用户理解和使用智慧农业物联网设备；在已登录且走后端对话时，还可按用户意图远程控制已绑定设备开关
 4. **农事决策**：根据天气、季节、作物生长阶段提供农事安排建议
 
 回答要求：
@@ -18,6 +18,16 @@ const SYSTEM_PROMPT = `你是一位专业的智慧农业助手，具备以下能
 
 function setServerUrl(url) {
 	serverUrl = url
+}
+
+function getStoredToken() {
+	if (typeof uni === 'undefined') return ''
+	let t = uni.getStorageSync('token') || ''
+	if (!t) {
+		const u = uni.getStorageSync('userInfo')
+		if (u && u.token) t = u.token
+	}
+	return t
 }
 
 // #ifdef H5
@@ -105,10 +115,12 @@ async function chatH5(messages) {
 }
 // #endif
 
-// #ifndef H5
-async function chatApp(messages) {
+async function chatViaServer(messages, token) {
 	if (!serverUrl) {
-		throw new Error('未配置服务器地址，请在 .env 中设置 VITE_SERVER_URL')
+		throw new Error('未配置服务器地址')
+	}
+	if (!token) {
+		throw new Error('请先登录后再使用 AI；控制设备需登录账号')
 	}
 
 	const response = await new Promise((resolve, reject) => {
@@ -117,9 +129,14 @@ async function chatApp(messages) {
 			method: 'POST',
 			data: { messages },
 			header: {
-				'Content-Type': 'application/json'
+				'Content-Type': 'application/json',
+				Authorization: 'Bearer ' + token
 			},
 			success: (res) => {
+				if (res.statusCode === 401) {
+					reject(new Error('登录已过期，请重新登录'))
+					return
+				}
 				if (res.statusCode === 200 && res.data.code === 200) {
 					resolve(res.data)
 				} else {
@@ -137,7 +154,6 @@ async function chatApp(messages) {
 		usage: response.data.usage
 	}
 }
-// #endif
 
 async function init(envId, accessKey) {
 	// #ifdef H5
@@ -151,12 +167,17 @@ async function init(envId, accessKey) {
 }
 
 async function chat(messages, onStream) {
+	const token = getStoredToken()
+
 	// #ifdef H5
+	if (token && serverUrl) {
+		return chatViaServer(messages, token)
+	}
 	return chatH5(messages)
 	// #endif
-	
+
 	// #ifndef H5
-	return chatApp(messages)
+	return chatViaServer(messages, token)
 	// #endif
 }
 

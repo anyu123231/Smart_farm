@@ -3,6 +3,7 @@ const express = require('express')
 const mysql = require('mysql2/promise')
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+const axios = require('axios')
 const cloudbase = require('@cloudbase/node-sdk')
 
 const app = express()
@@ -47,6 +48,289 @@ const SYSTEM_PROMPT = `你是一位专业的智慧农业助手，具备以下能
 - 提供具体可操作的建议
 - 适当使用emoji让回答更生动
 - 如果涉及专业术语，请简单解释`
+
+function formatDevicesForAiPrompt(devices) {
+	if (!devices || devices.length === 0) {
+		return '（当前账号下没有已绑定的可控设备）'
+	}
+	return devices
+		.map((d) => {
+			const isDual = d.type === '2' || d.type === 2
+			const typeLabel = isDual ? '双路' : '单路'
+			let st = ''
+			if (isDual) {
+				const parts = String(d.status || 'off:off').split(':')
+				const l = parts[0] === 'on' ? '开' : '关'
+				const r = (parts[1] === 'on' ? '开' : '关')
+				st = `左${l}右${r}`
+			} else {
+				st =
+					d.status === 'on' || d.status === 1 || d.status === '1'
+						? '开'
+						: '关'
+			}
+			return `- id=${d.id}，名称「${d.name}」，${typeLabel}，当前${st}`
+		})
+		.join('\n')
+}
+
+function buildDeviceControlPrompt(deviceLines, syncedAtISO) {
+	return `## 设备远程控制（物联网）
+
+**状态唯一依据（必须遵守）**
+- 下方「设备列表」由服务器在**每一次**收到对话请求时，从数据库实时查询得到（查询时间：${syncedAtISO}）。
+- 用户在 App「设备」页手动开关、设备通过 MQTT 上报、或你本轮下发的 [[DEVICE_CMD]] 成功写入后，数据库会更新；**下一轮对话会读到新状态**。
+- **此前任意轮次里，用户或助手口头说的「开着/关着」一律可能已过期。回答「现在开没开」「当前状态」类问题时，只能依据下方列表，禁止根据聊天历史推断或复述旧状态。**
+- 若用户问「我刚才手动关了你怎么还说开着」，应说明以本列表为准并据列表纠正。
+
+下列设备属于当前登录用户，你只能使用下列 id 执行开关操作。
+
+${deviceLines}
+
+当用户**明确要求你执行**打开/关闭某设备（双路设备可单独控制左/右）时：
+1. 先用简短自然语言说明将要执行的操作；
+2. 在整段回复的最后，按需另起一行输出一条或多条机器指令，格式严格如下（不要用 Markdown 代码块包裹）：
+[[DEVICE_CMD:{"device_id":数字,"status":"状态"}}]]
+
+status 规则：
+- 单路设备：只能是 "on" 或 "off"
+- 双路设备：必须是 "左:右"，每段为 "on" 或 "off"，例如左开右关写作 "on:off"
+
+若用户只是咨询、未要求真实执行开关，则**不要**输出任何 [[DEVICE_CMD:...]] 行。
+若需连续控制多台设备，可输出多行，每行一个 [[DEVICE_CMD:...]]。`
+}
+
+function buildUserSnapshotMessage(deviceRows, syncedAtISO) {
+	const lines = formatDevicesForAiPrompt(deviceRows)
+	return (
+		`[系统注入·非用户输入] 以下为服务端于 ${syncedAtISO} 从数据库读取的当前开关状态；` +
+		`回答「现在/当前是否开启」等问题时仅以此为依据，忽略上文对话中的旧描述。\n` +
+		`${lines}`
+	)
+}
+
+function dualStatusToMqttMsg(normalizedStatus) {
+	const parts = normalizedStatus.split(':')
+	const leftOn = parts[0] === 'on'
+	const rightOn = parts[1] === 'on'
+	if (leftOn && rightOn) return 'full'
+	if (leftOn) return 'left'
+	if (rightOn) return 'right'
+	return 'close'
+}
+
+function formatDateTimeMySQL(date = new Date()) {
+	const pad = (n) => String(n).padStart(2, '0')
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+/** mysql2 对 DATETIME 常返回 JS Date；误用 String(date).replace(' ', 'T') 会得到非法字符串，导致时长恒为 0 */
+function mysqlTimeToMs(value) {
+	if (value == null || value === '') return NaN
+	if (value instanceof Date) {
+		const t = value.getTime()
+		return Number.isNaN(t) ? NaN : t
+	}
+	const s = String(value).trim()
+	if (!s) return NaN
+	const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2}(\.\d{1,6})?)/)
+	if (m) {
+		return new Date(`${m[1]}T${m[2]}`).getTime()
+	}
+	return new Date(s).getTime()
+}
+
+function secondsSinceMysqlTime(mysqlTime) {
+	const t = mysqlTimeToMs(mysqlTime)
+	if (Number.isNaN(t)) return 0
+	return Math.max(0, Math.floor((Date.now() - t) / 1000))
+}
+
+function parseDualStatusFromDb(statusVal) {
+	const parts = String(statusVal || 'off:off').split(':')
+	return {
+		left: parts[0] === 'on' ? 'on' : 'off',
+		right: parts[1] === 'on' ? 'on' : 'off'
+	}
+}
+
+function isType1On(statusVal) {
+	return statusVal === 'on' || statusVal === 1 || statusVal === '1'
+}
+
+function buildAiDeviceTimeUpdates(row, normalizedStatus, deviceType) {
+	const nowStr = formatDateTimeMySQL()
+	const updates = { status: normalizedStatus }
+
+	if (deviceType === '2' || deviceType === 2) {
+		const prev = parseDualStatusFromDb(row.status)
+		const next = parseDualStatusFromDb(normalizedStatus)
+
+		if (prev.left === 'off' && next.left === 'on') {
+			updates.leftOpenTime = nowStr
+		}
+		if (prev.left === 'on' && next.left === 'off') {
+			const dur = secondsSinceMysqlTime(row.leftOpenTime)
+			updates.leftCloseTime = nowStr
+			updates.leftLastDuration = dur
+			updates.leftTotalDuration = (Number(row.leftTotalDuration) || 0) + dur
+		}
+
+		if (prev.right === 'off' && next.right === 'on') {
+			updates.rightOpenTime = nowStr
+		}
+		if (prev.right === 'on' && next.right === 'off') {
+			const dur = secondsSinceMysqlTime(row.rightOpenTime)
+			updates.rightCloseTime = nowStr
+			updates.rightLastDuration = dur
+			updates.rightTotalDuration = (Number(row.rightTotalDuration) || 0) + dur
+		}
+	} else {
+		const wasOn = isType1On(row.status)
+		const willOn = normalizedStatus === 'on'
+
+		if (!wasOn && willOn) {
+			updates.openTime = nowStr
+		}
+		if (wasOn && !willOn) {
+			const dur = secondsSinceMysqlTime(row.openTime)
+			updates.closeTime = nowStr
+			updates.lastDuration = dur
+			updates.totalDuration = (Number(row.totalDuration) || 0) + dur
+		}
+	}
+
+	return updates
+}
+
+async function applyAiDeviceCommand(pool, userId, deviceId, statusInput) {
+	const [device] = await pool.query(
+		`SELECT id, type, uid, topic, status,
+			openTime, closeTime, totalDuration,
+			leftOpenTime, leftCloseTime, leftTotalDuration,
+			rightOpenTime, rightCloseTime, rightTotalDuration
+		 FROM devices WHERE id = ? AND user_id = ?`,
+		[deviceId, userId]
+	)
+	if (!device.length) {
+		return { ok: false, message: '设备不存在或无权操作' }
+	}
+
+	const row = device[0]
+	const deviceType = row.type
+	let normalizedStatus
+
+	if (deviceType === '2' || deviceType === 2) {
+		const s = String(statusInput || '')
+		if (!s.includes(':')) {
+			return { ok: false, message: '双路设备 status 需为 "on:off" 形式（左:右）' }
+		}
+		const parts = s.split(':')
+		if (parts.length !== 2) {
+			return { ok: false, message: '双路设备状态格式无效' }
+		}
+		const leftStatus =
+			parts[0] === 'on' || parts[0] === '1' || parts[0] === 1 ? 'on' : 'off'
+		const rightStatus =
+			parts[1] === 'on' || parts[1] === '1' || parts[1] === 1 ? 'on' : 'off'
+		normalizedStatus = `${leftStatus}:${rightStatus}`
+	} else {
+		normalizedStatus =
+			statusInput === 'on' || statusInput === 1 || statusInput === '1'
+				? 'on'
+				: 'off'
+	}
+
+	const updates = buildAiDeviceTimeUpdates(row, normalizedStatus, deviceType)
+	const keys = Object.keys(updates)
+	const setClause = keys.map((k) => `${k} = ?`).join(', ')
+	const values = keys.map((k) => updates[k])
+	await pool.query(
+		`UPDATE devices SET ${setClause} WHERE id = ? AND user_id = ?`,
+		[...values, deviceId, userId]
+	)
+
+	let mqttMsg
+	if (deviceType === '2' || deviceType === 2) {
+		mqttMsg = dualStatusToMqttMsg(normalizedStatus)
+	} else {
+		mqttMsg = normalizedStatus
+	}
+
+	try {
+		const bemfaRes = await axios.get('https://apis.bemfa.com/va/sendMessage', {
+			params: {
+				uid: row.uid,
+				topic: row.topic,
+				type: 1,
+				msg: mqttMsg
+			},
+			timeout: 8000
+		})
+		if (!bemfaRes.data || bemfaRes.data.code !== 0) {
+			return {
+				ok: false,
+				message: bemfaRes.data?.message || '巴法云下发失败',
+				dbUpdated: true
+			}
+		}
+	} catch (e) {
+		return {
+			ok: false,
+			message: e.message || '巴法云请求异常',
+			dbUpdated: true
+		}
+	}
+
+	return { ok: true, message: '已更新并下发' }
+}
+
+async function processAiDeviceCommandTags(pool, userId, text) {
+	if (!text || typeof text !== 'string') {
+		return { cleanText: text, commandNotes: [] }
+	}
+
+	const re = /\[\[DEVICE_CMD:\s*(\{[\s\S]*?\})\s*\]\]/g
+	const notes = []
+	let m
+	const toRun = []
+	while ((m = re.exec(text)) !== null) {
+		toRun.push(m[0])
+		try {
+			const payload = JSON.parse(m[1])
+			const did = payload.device_id ?? payload.id
+			const status = payload.status
+			if (did == null || status === undefined) {
+				notes.push('某条 DEVICE_CMD 缺少 device_id 或 status')
+				continue
+			}
+			const r = await applyAiDeviceCommand(pool, userId, Number(did), status)
+			notes.push(
+				r.ok
+					? `设备 id=${did}：${r.message}`
+					: `设备 id=${did}：失败 — ${r.message}`
+			)
+		} catch (e) {
+			notes.push(`解析或执行 DEVICE_CMD 失败：${e.message}`)
+		}
+	}
+
+	let cleanText = text
+	for (const tag of toRun) {
+		cleanText = cleanText.split(tag).join('')
+	}
+	cleanText = cleanText.replace(/\n{3,}/g, '\n\n').trim()
+
+	if (notes.length) {
+		const fail = notes.some((n) => n.includes('失败'))
+		const hint = fail
+			? '\n\n⚠️ 部分设备指令未能完成，详见：' + notes.join('；')
+			: '\n\n✅ ' + notes.join('；')
+		cleanText = (cleanText || '已完成操作。') + hint
+	}
+
+	return { cleanText, commandNotes: notes }
+}
 
 // 健康检查接口
 app.get('/health', (req, res) => {
@@ -262,7 +546,6 @@ app.get('/api/device', verifyToken, async (req, res) => {
 // 从巴法云获取设备最新消息
 async function fetchBemfaLatestMsg(uid, topic, type = 1) {
 	try {
-		const axios = require('axios')
 		const url = `https://apis.bemfa.com/va/getmsg?uid=${uid}&topic=${topic}&type=${type}&num=1`
 		const response = await axios.get(url, { timeout: 5000 })
 		
@@ -291,9 +574,9 @@ function bemfaTimeToMySQL(bemfaTime) {
 // 计算从开启时间到现在的秒数
 function calculateDuration(openTime) {
 	if (!openTime) return 0
-	const open = new Date(openTime.replace(' ', 'T'))
-	const now = new Date()
-	return Math.floor((now - open) / 1000)
+	const t = mysqlTimeToMs(openTime)
+	if (Number.isNaN(t)) return 0
+	return Math.floor((Date.now() - t) / 1000)
 }
 
 // 创建新设备
@@ -854,9 +1137,10 @@ app.delete('/api/device', verifyToken, async (req, res) => {
 	}
 })
 
-app.post('/api/ai/chat', async (req, res) => {
+app.post('/api/ai/chat', verifyToken, async (req, res) => {
 	try {
 		const { messages, sessionId } = req.body
+		const userId = req.user.id
 		
 		if (!messages || !Array.isArray(messages)) {
 			return res.status(400).json({
@@ -865,12 +1149,35 @@ app.post('/api/ai/chat', async (req, res) => {
 			})
 		}
 		
+		const [deviceRows] = await pool.query(
+			'SELECT id, name, type, status FROM devices WHERE user_id = ? ORDER BY id ASC',
+			[userId]
+		)
+		const syncedAt = new Date().toISOString()
+		const deviceLines = formatDevicesForAiPrompt(deviceRows)
+		const devicePrompt = buildDeviceControlPrompt(deviceLines, syncedAt)
+		const systemContent = `${SYSTEM_PROMPT}\n\n${devicePrompt}`
+		
 		const ai = tcbApp.ai()
 		const model = ai.createModel('hunyuan-exp')
 		
+		let augmentedMessages = Array.isArray(messages) ? [...messages] : []
+		const lastIdx = augmentedMessages.length - 1
+		const last = lastIdx >= 0 ? augmentedMessages[lastIdx] : null
+		const snapshot = buildUserSnapshotMessage(deviceRows, syncedAt)
+		if (last && last.role === 'user') {
+			augmentedMessages = [
+				...augmentedMessages.slice(0, lastIdx),
+				{ role: 'user', content: snapshot },
+				last
+			]
+		} else {
+			augmentedMessages.push({ role: 'user', content: snapshot })
+		}
+		
 		const fullMessages = [
-			{ role: 'system', content: SYSTEM_PROMPT },
-			...messages
+			{ role: 'system', content: systemContent },
+			...augmentedMessages
 		]
 		
 		const result = await model.generateText({
@@ -878,11 +1185,17 @@ app.post('/api/ai/chat', async (req, res) => {
 			messages: fullMessages
 		})
 		
+		const { cleanText } = await processAiDeviceCommandTags(
+			pool,
+			userId,
+			result.text
+		)
+		
 		res.json({
 			code: 200,
 			message: 'AI 响应成功',
 			data: {
-				text: result.text,
+				text: cleanText,
 				usage: result.usage,
 				sessionId: sessionId
 			}
