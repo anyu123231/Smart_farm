@@ -296,17 +296,34 @@
 	}
 </script>
 
-<style>
+<style lang="scss">
+/* 全局变量 */
+:root {
+	--primary-color: #00E676;
+	--secondary-color: #00B0FF;
+	--background-color: #F5F7FA;
+	--card-background: #FFFFFF;
+	--text-primary: #1A202C;
+	--text-secondary: #4A5568;
+	--text-light: #718096;
+	--border-radius: 24rpx;
+	--shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+	--shadow-md: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+	--shadow-lg: 0 16rpx 48rpx rgba(0, 0, 0, 0.18);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
-	background: #F5F7FA;
+	background: var(--background-color);
 	padding-bottom: 120rpx;
 	position: relative;
 	overflow: hidden;
+	font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
 }
 
+/* 背景装饰 */
 .bg-decoration {
 	position: absolute;
 	top: 0;
@@ -314,36 +331,52 @@
 	right: 0;
 	bottom: 0;
 	pointer-events: none;
+	z-index: 0;
 }
 
 .glow {
 	position: absolute;
 	border-radius: 50%;
-	filter: blur(100rpx);
+	filter: blur(120rpx);
+	animation: pulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+		opacity: 0.6;
+	}
+	100% {
+		transform: scale(1.2);
+		opacity: 0.8;
+	}
 }
 
 .glow-1 {
-	width: 300rpx;
-	height: 300rpx;
-	background: rgba(0, 200, 83, 0.06);
-	top: -60rpx;
-	left: -80rpx;
+	width: 400rpx;
+	height: 400rpx;
+	background: linear-gradient(135deg, var(--primary-color), transparent);
+	top: -100rpx;
+	left: -100rpx;
+	animation-delay: 0s;
 }
 
 .glow-2 {
-	width: 200rpx;
-	height: 200rpx;
-	background: rgba(0, 176, 255, 0.04);
+	width: 350rpx;
+	height: 350rpx;
+	background: linear-gradient(135deg, var(--secondary-color), transparent);
 	top: 400rpx;
-	right: -60rpx;
+	right: -100rpx;
+	animation-delay: 2s;
 }
 
+/* 头部 */
 .header {
 	padding: 20rpx 30rpx;
 	display: flex;
 	justify-content: flex-end;
 	position: relative;
-	z-index: 2;
+	z-index: 1;
 }
 
 .logout-btn {
@@ -354,7 +387,15 @@
 	background: rgba(255, 82, 82, 0.08);
 	border-radius: 12rpx;
 	border: 1rpx solid rgba(255, 82, 82, 0.15);
-	transition: all 0.3s ease;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	backdrop-filter: blur(10rpx);
+	cursor: pointer;
+	animation: fadeInUp 0.8s ease-out;
+}
+
+.logout-btn:hover {
+	transform: translateY(-2rpx);
+	box-shadow: 0 4rpx 16rpx rgba(255, 82, 82, 0.15);
 }
 
 .logout-btn:active {
@@ -368,23 +409,33 @@
 	font-weight: 500;
 }
 
+/* 个人资料区域 */
 .profile-section {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
 	padding: 50rpx 30rpx 40rpx;
-	background: #FFFFFF;
+	background: rgba(255, 255, 255, 0.95);
 	margin: 10rpx 24rpx 24rpx;
-	border-radius: 24rpx;
-	border: 1rpx solid #E0E0E0;
+	border-radius: var(--border-radius);
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	position: relative;
 	z-index: 1;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+	box-shadow: var(--shadow-md);
+	backdrop-filter: blur(20rpx);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+.profile-section:hover {
+	transform: translateY(-4rpx);
+	box-shadow: var(--shadow-lg);
 }
 
 .avatar-wrapper {
 	position: relative;
 	margin-bottom: 24rpx;
+	animation: fadeInUp 1s ease-out 0.4s both;
 }
 
 .avatar {
@@ -393,6 +444,13 @@
 	border-radius: 60rpx;
 	position: relative;
 	z-index: 1;
+	box-shadow: var(--shadow-md);
+	transition: all 0.3s ease;
+}
+
+.avatar:hover {
+	transform: scale(1.05);
+	box-shadow: var(--shadow-lg);
 }
 
 .avatar-ring {
@@ -402,26 +460,43 @@
 	right: -8rpx;
 	bottom: -8rpx;
 	border-radius: 68rpx;
-	border: 2rpx solid rgba(0, 200, 83, 0.3);
+	border: 2rpx solid rgba(0, 230, 118, 0.3);
+	animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 .login-btn-wrapper {
 	margin-top: 12rpx;
 	padding: 14rpx 48rpx;
-	background: rgba(0, 200, 83, 0.08);
+	background: rgba(0, 230, 118, 0.08);
 	border-radius: 12rpx;
-	border: 1rpx solid rgba(0, 200, 83, 0.25);
-	transition: all 0.3s ease;
+	border: 1rpx solid rgba(0, 230, 118, 0.25);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+	animation: fadeInUp 1s ease-out 0.6s both;
+}
+
+.login-btn-wrapper:hover {
+	transform: translateY(-2rpx);
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.15);
 }
 
 .login-btn-wrapper:active {
-	background: rgba(0, 200, 83, 0.15);
+	background: rgba(0, 230, 118, 0.15);
 	transform: scale(0.95);
 }
 
 .login-text {
 	font-size: 28rpx;
-	color: #00C853;
+	color: var(--primary-color);
 	font-weight: 600;
 }
 
@@ -429,53 +504,64 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	animation: fadeInUp 1s ease-out 0.6s both;
 }
 
 .username {
 	font-size: 36rpx;
-	color: #212121;
+	color: var(--text-primary);
 	font-weight: 700;
 	margin-bottom: 8rpx;
+	letter-spacing: 1rpx;
 }
 
 .user-role {
 	font-size: 22rpx;
-	color: #757575;
+	color: var(--text-light);
 	padding: 4rpx 16rpx;
-	background: rgba(0, 200, 83, 0.08);
+	background: rgba(0, 230, 118, 0.08);
 	border-radius: 8rpx;
 }
 
+/* 菜单区域 */
 .menu-section {
 	position: relative;
 	z-index: 1;
 	margin: 0 24rpx;
+	animation: fadeInUp 1s ease-out 0.8s both;
 }
 
 .menu-group {
 	display: flex;
 	flex-direction: column;
-	background: #FFFFFF;
-	border-radius: 24rpx;
-	border: 1rpx solid #E0E0E0;
+	background: rgba(255, 255, 255, 0.95);
+	border-radius: var(--border-radius);
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	overflow: hidden;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+	box-shadow: var(--shadow-md);
+	backdrop-filter: blur(20rpx);
 }
 
 .menu-item {
 	display: flex;
 	align-items: center;
 	padding: 28rpx 30rpx;
-	border-bottom: 1rpx solid #EEEEEE;
-	transition: all 0.2s ease;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
 }
 
 .menu-item:last-child {
 	border-bottom: none;
 }
 
+.menu-item:hover {
+	background: rgba(0, 230, 118, 0.02);
+	transform: translateX(8rpx);
+}
+
 .menu-item:active {
-	background: #F5F5F5;
+	background: rgba(0, 230, 118, 0.05);
 }
 
 .menu-icon-wrapper {
@@ -486,6 +572,12 @@
 	align-items: center;
 	justify-content: center;
 	margin-right: 20rpx;
+	transition: all 0.3s ease;
+	flex-shrink: 0;
+}
+
+.menu-item:hover .menu-icon-wrapper {
+	transform: scale(1.1);
 }
 
 .menu-icon-emoji {
@@ -495,20 +587,115 @@
 .menu-text {
 	flex: 1;
 	font-size: 30rpx;
-	color: #212121;
+	color: var(--text-primary);
 	font-weight: 500;
 }
 
+/* 版本信息 */
 .version-info {
 	display: flex;
 	justify-content: center;
 	padding: 40rpx 0;
 	position: relative;
 	z-index: 1;
+	animation: fadeInUp 1s ease-out 1s both;
 }
 
 .version-text {
 	font-size: 22rpx;
-	color: #9E9E9E;
+	color: var(--text-light);
+}
+
+/* 响应式设计 */
+@media (max-width: 375px) {
+	.profile-section {
+		padding: 40rpx 24rpx 32rpx;
+		margin: 10rpx 16rpx 16rpx;
+	}
+	
+	.avatar {
+		width: 100rpx;
+		height: 100rpx;
+	}
+	
+	.avatar-ring {
+		top: -6rpx;
+		left: -6rpx;
+		right: -6rpx;
+		bottom: -6rpx;
+	}
+	
+	.username {
+		font-size: 32rpx;
+	}
+	
+	.menu-item {
+		padding: 24rpx 24rpx;
+	}
+	
+	.menu-section {
+		margin: 0 16rpx;
+	}
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+	.content {
+		background: #1A202C;
+	}
+	
+	:root {
+		--text-primary: #F7FAFC;
+		--text-secondary: #E2E8F0;
+		--text-light: #A0AEC0;
+	}
+	
+	.profile-section {
+		background: rgba(45, 55, 72, 0.95);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+	
+	.menu-group {
+		background: rgba(45, 55, 72, 0.95);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+	
+	.menu-item {
+		border-bottom-color: rgba(255, 255, 255, 0.05);
+	}
+	
+	.menu-item:hover {
+		background: rgba(0, 230, 118, 0.1);
+	}
+	
+	.menu-item:active {
+		background: rgba(0, 230, 118, 0.15);
+	}
+	
+	.logout-btn {
+		background: rgba(255, 82, 82, 0.15);
+		border-color: rgba(255, 82, 82, 0.3);
+	}
+	
+	.login-btn-wrapper {
+		background: rgba(0, 230, 118, 0.15);
+		border-color: rgba(0, 230, 118, 0.3);
+	}
+	
+	.user-role {
+		background: rgba(0, 230, 118, 0.15);
+	}
+}
+
+/* 通用动画 */
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(20rpx);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 </style>

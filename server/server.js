@@ -1390,6 +1390,220 @@ app.delete('/api/ai/sessions/:sessionId', verifyToken, async (req, res) => {
 	}
 })
 
+// ==================== 和风天气 API ====================
+const QWEATHER_API_KEY = process.env.QWEATHER_API_KEY || 'e2671b8a81064905a7ab897bd9ab78fc'
+const QWEATHER_BASE_URL = 'https://qj3qqrunru.re.qweatherapi.com/v7'
+const QWEATHER_GEO_URL = 'https://qj3qqrunru.re.qweatherapi.com/geo/v2'
+
+// 城市搜索 - 根据经纬度或城市名查询Location ID
+app.get('/api/weather/location', async (req, res) => {
+	try {
+		const { location, adm } = req.query
+		
+		if (!location) {
+			return res.status(400).json({
+				code: 400,
+				message: '请提供location参数（经纬度或城市名）'
+			})
+		}
+		
+		let url = `${QWEATHER_GEO_URL}/city/lookup?key=${QWEATHER_API_KEY}&location=${encodeURIComponent(location)}`
+		if (adm) {
+			url += `&adm=${encodeURIComponent(adm)}`
+		}
+		
+		const response = await axios.get(url)
+		const data = response.data
+		
+		if (data.code !== '200') {
+			return res.status(400).json({
+				code: 400,
+				message: '城市查询失败',
+				qweatherCode: data.code
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '查询成功',
+			data: data.location
+		})
+	} catch (error) {
+		console.error('城市搜索失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '城市搜索失败',
+			error: error.message
+		})
+	}
+})
+
+// 实时天气
+app.get('/api/weather/now', async (req, res) => {
+	try {
+		const { location } = req.query
+		
+		if (!location) {
+			return res.status(400).json({
+				code: 400,
+				message: '请提供location参数（Location ID或经纬度）'
+			})
+		}
+		
+		const response = await axios.get(`${QWEATHER_BASE_URL}/weather/now?key=${QWEATHER_API_KEY}&location=${location}`)
+		const data = response.data
+		
+		if (data.code !== '200') {
+			return res.status(400).json({
+				code: 400,
+				message: '获取天气失败',
+				qweatherCode: data.code
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '获取成功',
+			data: data.now,
+			updateTime: data.updateTime
+		})
+	} catch (error) {
+		console.error('获取实时天气失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取实时天气失败',
+			error: error.message
+		})
+	}
+})
+
+// 3天天气预报
+app.get('/api/weather/forecast', async (req, res) => {
+	try {
+		const { location } = req.query
+		
+		if (!location) {
+			return res.status(400).json({
+				code: 400,
+				message: '请提供location参数'
+			})
+		}
+		
+		const response = await axios.get(`${QWEATHER_BASE_URL}/weather/3d?key=${QWEATHER_API_KEY}&location=${location}`)
+		const data = response.data
+		
+		if (data.code !== '200') {
+			return res.status(400).json({
+				code: 400,
+				message: '获取天气预报失败',
+				qweatherCode: data.code
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '获取成功',
+			data: data.daily,
+			updateTime: data.updateTime
+		})
+	} catch (error) {
+		console.error('获取天气预报失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取天气预报失败',
+			error: error.message
+		})
+	}
+})
+
+// 空气质量
+app.get('/api/weather/air', async (req, res) => {
+	try {
+		const { location } = req.query
+		
+		if (!location) {
+			return res.status(400).json({
+				code: 400,
+				message: '请提供location参数'
+			})
+		}
+		
+		const response = await axios.get(`${QWEATHER_BASE_URL}/air/now?key=${QWEATHER_API_KEY}&location=${location}`)
+		const data = response.data
+		
+		if (data.code !== '200') {
+			return res.status(400).json({
+				code: 400,
+				message: '获取空气质量失败',
+				qweatherCode: data.code
+			})
+		}
+		
+		res.json({
+			code: 200,
+			message: '获取成功',
+			data: data.now,
+			updateTime: data.updateTime
+		})
+	} catch (error) {
+		console.error('获取空气质量失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取空气质量失败',
+			error: error.message
+		})
+	}
+})
+
+// 综合天气接口 - 一次性获取所有天气数据
+app.get('/api/weather/all', async (req, res) => {
+	try {
+		const { location } = req.query
+		
+		if (!location) {
+			return res.status(400).json({
+				code: 400,
+				message: '请提供location参数'
+			})
+		}
+		
+		// 获取实时天气和预报（必获取）
+		const [nowRes, forecastRes] = await Promise.all([
+			axios.get(`${QWEATHER_BASE_URL}/weather/now?key=${QWEATHER_API_KEY}&location=${location}`),
+			axios.get(`${QWEATHER_BASE_URL}/weather/3d?key=${QWEATHER_API_KEY}&location=${location}`)
+		])
+		
+		// 空气质量可能不在订阅范围内，单独处理
+		let airData = null
+		try {
+			const airRes = await axios.get(`${QWEATHER_BASE_URL}/air/now?key=${QWEATHER_API_KEY}&location=${location}`)
+			if (airRes.data.code === '200') {
+				airData = airRes.data.now
+			}
+		} catch (airError) {
+			console.log('空气质量获取失败（可能不在订阅范围内）:', airError.message)
+		}
+		
+		res.json({
+			code: 200,
+			message: '获取成功',
+			data: {
+				now: nowRes.data.code === '200' ? nowRes.data.now : null,
+				forecast: forecastRes.data.code === '200' ? forecastRes.data.daily : null,
+				air: airData,
+				updateTime: nowRes.data.updateTime
+			}
+		})
+	} catch (error) {
+		console.error('获取综合天气失败:', error)
+		res.status(500).json({
+			code: 500,
+			message: '获取综合天气失败',
+			error: error.message
+		})
+	}
+})
+
 // 404 处理
 app.use((req, res) => {
 	res.status(404).json({
