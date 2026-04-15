@@ -1225,7 +1225,7 @@ export default {
 	flex-direction: column;
 	min-height: 100vh;
 	background: var(--background-color);
-	padding: 20rpx 24rpx;
+	padding: 20rpx 20rpx;
 	padding-bottom: 140rpx;
 	position: relative;
 	overflow: hidden;
@@ -1364,6 +1364,7 @@ export default {
 	gap: 28rpx;
 	position: relative;
 	z-index: 1;
+	padding: 0;
 }
 
 /* 无设备提示 */
@@ -1402,131 +1403,7 @@ export default {
 	animation: fadeInUp 1s ease-out 0.6s both;
 }
 
-/* 设备卡片 */
-.card {
-	background: rgba(255, 255, 255, 0.95);
-	border-radius: var(--border-radius);
-	border: 1rpx solid rgba(0, 0, 0, 0.05);
-	box-shadow: var(--shadow-md);
-	backdrop-filter: blur(20rpx);
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	animation: fadeInUp 0.8s ease-out;
-	overflow: hidden;
-}
 
-.card:hover {
-	transform: translateY(-4rpx);
-	box-shadow: var(--shadow-lg);
-}
-
-.card-top {
-	display: flex;
-	align-items: flex-start;
-	padding: 32rpx 28rpx;
-	gap: 20rpx;
-}
-
-.device-icon-wrapper {
-	width: 64rpx;
-	height: 64rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(245, 247, 250, 0.9);
-	border-radius: 16rpx;
-	color: var(--text-secondary);
-	transition: all 0.3s ease;
-	flex-shrink: 0;
-}
-
-.device-icon-wrapper.is-on {
-	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-	color: #FFFFFF;
-	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.3);
-}
-
-.card-title-area {
-	flex: 1;
-	min-width: 0;
-}
-
-.title-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 8rpx;
-}
-
-.card-title {
-	font-size: 32rpx;
-	font-weight: 600;
-	color: var(--text-primary);
-	line-height: 1.3;
-}
-
-.card-topic {
-	font-size: 22rpx;
-	color: var(--text-light);
-	line-height: 1.4;
-}
-
-.card-actions {
-	display: flex;
-	gap: 16rpx;
-	flex-shrink: 0;
-}
-
-.action-btn {
-	width: 48rpx;
-	height: 48rpx;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: rgba(245, 247, 250, 0.9);
-	border-radius: 12rpx;
-	color: var(--text-secondary);
-	transition: all 0.3s ease;
-	cursor: pointer;
-}
-
-.action-btn:hover {
-	background: rgba(0, 230, 118, 0.1);
-	color: var(--primary-color);
-	transform: scale(1.1);
-}
-
-.edit-btn:hover {
-	background: rgba(0, 176, 255, 0.1);
-	color: var(--secondary-color);
-}
-
-.delete-btn:hover {
-	background: rgba(255, 82, 82, 0.1);
-	color: #FF5252;
-}
-
-.icon-wrapper {
-	width: 16px;
-	height: 16px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	font-size: 16px;
-}
-
-.edit-icon::before {
-	content: "✏️";
-}
-
-.delete-icon::before {
-	content: "🗑️";
-}
-
-.card-divider {
-	height: 1rpx;
-	background: rgba(0, 0, 0, 0.05);
-	margin: 0 28rpx;
-}
 
 /* 设备信息 */
 .device-info {
@@ -1795,7 +1672,7 @@ export default {
 }
 
 .card {
-	width: 100%;
+	width:92%;
 	background: #FFFFFF;
 	border-radius: 24rpx;
 	padding: 28rpx;

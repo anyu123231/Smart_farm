@@ -29,10 +29,7 @@
 						<text class="session-time">{{ formatTime(session.updated_at) }}</text>
 					</view>
 					<view class="delete-btn" @click.stop="deleteSession(session.id)">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-							<line x1="18" y1="6" x2="6" y2="18"/>
-							<line x1="6" y1="6" x2="18" y2="18"/>
-						</svg>
+						<text class="delete-icon">✕</text>
 					</view>
 				</view>
 			</scroll-view>
@@ -46,13 +43,8 @@
 
 		<view class="chat-header">
 			<view class="menu-btn" @click="toggleSessionPanel">
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2">
-					<line x1="3" y1="12" x2="21" y2="12"/>
-					<line x1="3" y1="6" x2="21" y2="6"/>
-					<line x1="3" y1="18" x2="21" y2="18"/>
-				</svg>
+				<text class="menu-icon">☰</text>
 			</view>
-			<text class="header-title">{{ currentSessionName || 'AI助手' }}</text>
 			<view class="placeholder"></view>
 		</view>
 
@@ -64,11 +56,7 @@
 		>
 			<view v-if="messages.length === 0" class="welcome-section">
 				<view class="welcome-icon">
-					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00C853" stroke-width="1.5">
-						<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/>
-						<path d="M12 16v-4"/>
-						<path d="M12 8h.01"/>
-					</svg>
+					<text class="welcome-icon-text">🤖</text>
 				</view>
 				<text class="welcome-title">智慧农业AI助手</text>
 				<text class="welcome-desc">我可以帮你解答种植、病虫害防治、设备使用等问题；登录后还可让我帮你开关已绑定的设备（请直接说设备名称与开/关）</text>
@@ -133,15 +121,12 @@
 					@confirm="sendMessage"
 				/>
 				<view 
-					class="send-btn" 
-					:class="{ active: inputText.trim() && !isLoading }"
-					@click="sendMessage"
-				>
-					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<line x1="22" y1="2" x2="11" y2="13"/>
-						<polygon points="22 2 15 22 11 13 2 9 22 2"/>
-					</svg>
-				</view>
+				class="send-btn" 
+				:class="{ active: inputText.trim() && !isLoading }"
+				@click="sendMessage"
+			>
+				<text class="send-icon">➤</text>
+			</view>
 			</view>
 			<text class="input-hint">按 Enter 发送</text>
 		</view>
@@ -401,12 +386,28 @@ export default {
 </script>
 
 <style>
+/* 全局变量 */
+:root {
+	--primary-color: #00E676;
+	--secondary-color: #00B0FF;
+	--background-color: #F5F7FA;
+	--text-primary: #212121;
+	--text-secondary: #757575;
+	--text-light: #9E9E9E;
+	--border-color: #E0E0E0;
+	--border-radius: 24rpx;
+	--shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+	--shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.1);
+	--shadow-lg: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+}
+
 .chat-container {
 	display: flex;
 	flex-direction: column;
 	height: 100vh;
-	background: #F5F7FA;
+	background: var(--background-color);
 	position: relative;
+	font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .bg-decoration {
@@ -416,28 +417,41 @@ export default {
 	right: 0;
 	bottom: 0;
 	pointer-events: none;
+	z-index: 0;
 }
 
 .glow {
 	position: absolute;
 	border-radius: 50%;
-	filter: blur(80rpx);
+	filter: blur(120rpx);
+	animation: pulse 8s ease-in-out infinite alternate;
 }
 
 .glow-1 {
-	width: 300rpx;
-	height: 300rpx;
-	background: rgba(0, 200, 83, 0.06);
-	top: 100rpx;
-	right: -50rpx;
+	width: 400rpx;
+	height: 400rpx;
+	background: linear-gradient(135deg, var(--primary-color), transparent);
+	top: -100rpx;
+	right: -100rpx;
 }
 
 .glow-2 {
-	width: 250rpx;
-	height: 250rpx;
-	background: rgba(0, 176, 255, 0.04);
-	bottom: 200rpx;
-	left: -60rpx;
+	width: 350rpx;
+	height: 350rpx;
+	background: linear-gradient(135deg, var(--secondary-color), transparent);
+	bottom: -100rpx;
+	left: -100rpx;
+}
+
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+		opacity: 0.6;
+	}
+	100% {
+		transform: scale(1.2);
+		opacity: 0.8;
+	}
 }
 
 /* 会话面板 */
@@ -446,13 +460,28 @@ export default {
 	top: 0;
 	left: 0;
 	bottom: 0;
-	width: 70%;
-	max-width: 300px;
-	background: #FFFFFF;
+	width:70%;
+	max-width: 320px;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(20rpx);
 	z-index: 100;
 	display: flex;
 	flex-direction: column;
-	box-shadow: 2rpx 0 20rpx rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+	border-right: 1rpx solid rgba(0, 0, 0, 0.05);
+	animation: slideInLeft 0.3s ease-out;
+	box-sizing: border-box;
+}
+
+@keyframes slideInLeft {
+	from {
+		transform: translateX(-100%);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
 }
 
 .session-header {
@@ -460,13 +489,17 @@ export default {
 	align-items: center;
 	justify-content: space-between;
 	padding: 30rpx;
-	border-bottom: 1rpx solid #EEEEEE;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+	background: rgba(255, 255, 255, 0.9);
+	backdrop-filter: blur(10rpx);
+	box-sizing: border-box;
+	width: 100%;
 }
 
 .session-title {
 	font-size: 32rpx;
 	font-weight: 600;
-	color: #212121;
+	color: var(--text-primary);
 }
 
 .close-btn {
@@ -476,15 +509,19 @@ export default {
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
+	transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+	background: rgba(0, 0, 0, 0.05);
 }
 
 .close-btn:active {
-	background: #F5F5F5;
+	transform: scale(0.9);
 }
 
 .session-list {
 	flex: 1;
-	padding: 20rpx;
 }
 
 .session-item {
@@ -493,14 +530,24 @@ export default {
 	justify-content: space-between;
 	padding: 24rpx;
 	margin-bottom: 16rpx;
-	background: #F5F7FA;
+	background: rgba(245, 247, 250, 0.9);
 	border-radius: 16rpx;
 	border: 2rpx solid transparent;
+	transition: all 0.3s ease;
+	backdrop-filter: blur(10rpx);
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.session-item:hover {
+	transform: translateY(-2rpx);
+	box-shadow: var(--shadow-sm);
 }
 
 .session-item.active {
-	background: #E8F5E9;
-	border-color: #00C853;
+	background: rgba(0, 230, 118, 0.1);
+	border-color: var(--primary-color);
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.2);
 }
 
 .session-info {
@@ -510,7 +557,7 @@ export default {
 
 .session-name {
 	font-size: 28rpx;
-	color: #212121;
+	color: var(--text-primary);
 	font-weight: 500;
 	display: block;
 	overflow: hidden;
@@ -520,7 +567,7 @@ export default {
 
 .session-time {
 	font-size: 22rpx;
-	color: #9E9E9E;
+	color: var(--text-light);
 	margin-top: 8rpx;
 	display: block;
 }
@@ -532,18 +579,43 @@ export default {
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
+	transition: all 0.3s ease;
+}
+
+.delete-btn:hover {
+	background: rgba(255, 82, 82, 0.1);
 }
 
 .delete-btn:active {
-	background: #FFEBEE;
+	transform: scale(0.9);
+}
+
+.delete-icon {
+	font-size: 28rpx;
+	color: var(--text-light);
+	font-weight: 600;
+	line-height: 1;
 }
 
 .new-session-btn {
 	margin: 20rpx;
 	padding: 28rpx;
-	background: linear-gradient(135deg, #00C853 0%, #00E676 100%);
+	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 	border-radius: 16rpx;
 	text-align: center;
+	transition: all 0.3s ease;
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.3);
+	box-sizing: border-box;
+	width: calc(100% - 40rpx);
+}
+
+.new-session-btn:hover {
+	transform: translateY(-2rpx);
+	box-shadow: 0 8rpx 24rpx rgba(0, 230, 118, 0.4);
+}
+
+.new-session-btn:active {
+	transform: scale(0.98);
 }
 
 .new-session-btn text {
@@ -560,18 +632,29 @@ export default {
 	bottom: 0;
 	background: rgba(0, 0, 0, 0.5);
 	z-index: 99;
+	animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
 /* 聊天头部 */
 .chat-header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	padding: 20rpx 30rpx;
-	background: #FFFFFF;
-	border-bottom: 1rpx solid #EEEEEE;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(20rpx);
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
 	position: relative;
 	z-index: 10;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
 .menu-btn {
@@ -581,22 +664,21 @@ export default {
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
+	transition: all 0.3s ease;
+}
+
+.menu-btn:hover {
+	background: rgba(0, 0, 0, 0.05);
 }
 
 .menu-btn:active {
-	background: #F5F5F5;
+	transform: scale(0.9);
 }
 
-.header-title {
+.menu-icon {
 	font-size: 32rpx;
+	color: var(--text-primary);
 	font-weight: 600;
-	color: #212121;
-	flex: 1;
-	text-align: center;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	padding: 0 20rpx;
 }
 
 .placeholder {
@@ -616,6 +698,18 @@ export default {
 	flex-direction: column;
 	align-items: center;
 	padding: 80rpx 40rpx;
+	animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+	from {
+		transform: translateY(30rpx);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
 }
 
 .welcome-icon {
@@ -624,53 +718,73 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
+	background: linear-gradient(135deg, rgba(0, 230, 118, 0.1), rgba(0, 230, 118, 0.2));
 	border-radius: 50%;
 	margin-bottom: 32rpx;
+	box-shadow: 0 8rpx 24rpx rgba(0, 230, 118, 0.2);
+	animation: pulse 2s ease-in-out infinite;
+}
+
+.welcome-icon-text {
+	font-size: 60rpx;
+	line-height: 1;
 }
 
 .welcome-title {
 	font-size: 40rpx;
 	font-weight: 700;
-	color: #212121;
+	color: var(--text-primary);
 	margin-bottom: 16rpx;
+	animation: fadeInUp 0.8s ease-out 0.2s both;
 }
 
 .welcome-desc {
 	font-size: 26rpx;
-	color: #757575;
+	color: var(--text-secondary);
 	text-align: center;
 	margin-bottom: 48rpx;
+	line-height: 1.6;
+	animation: fadeInUp 0.8s ease-out 0.4s both;
 }
 
 .quick-questions {
 	width: 100%;
+	animation: fadeInUp 0.8s ease-out 0.6s both;
 }
 
 .quick-title {
 	font-size: 24rpx;
-	color: #9E9E9E;
+	color: var(--text-light);
 	margin-bottom: 20rpx;
 	display: block;
 }
 
 .quick-item {
-	background: #FFFFFF;
-	border: 1rpx solid #E0E0E0;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(10rpx);
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	border-radius: 16rpx;
 	padding: 24rpx 28rpx;
 	margin-bottom: 16rpx;
-	transition: all 0.2s ease;
+	transition: all 0.3s ease;
+	box-shadow: var(--shadow-sm);
+}
+
+.quick-item:hover {
+	transform: translateY(-2rpx);
+	box-shadow: var(--shadow-md);
+	border-color: var(--primary-color);
 }
 
 .quick-item:active {
-	background: #F5F7FA;
-	border-color: #00C853;
+	transform: scale(0.98);
+	background: rgba(0, 230, 118, 0.05);
+	border-color: var(--primary-color);
 }
 
 .quick-item text {
 	font-size: 26rpx;
-	color: #424242;
+	color: var(--text-primary);
 	line-height: 1.5;
 }
 
@@ -678,6 +792,7 @@ export default {
 	display: flex;
 	margin-bottom: 24rpx;
 	position: relative;
+	animation: fadeInUp 0.5s ease-out;
 }
 
 .message-item.user {
@@ -692,10 +807,16 @@ export default {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
+}
+
+.avatar:hover {
+	transform: scale(1.05);
 }
 
 .avatar.user {
-	background: linear-gradient(135deg, #00C853 0%, #00E676 100%);
+	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 	margin-left: 16rpx;
 }
 
@@ -706,23 +827,30 @@ export default {
 }
 
 .avatar.assistant {
-	background: linear-gradient(135deg, #2196F3 0%, #00B0FF 100%);
+	background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
 	margin-right: 16rpx;
 }
 
 .message-content {
 	max-width: 70%;
-	background: #FFFFFF;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(10rpx);
 	border-radius: 20rpx;
 	padding: 24rpx 28rpx;
-	border: 1rpx solid #E0E0E0;
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
 	position: relative;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+	box-shadow: var(--shadow-sm);
+	transition: all 0.3s ease;
+}
+
+.message-content:hover {
+	box-shadow: var(--shadow-md);
 }
 
 .message-item.user .message-content {
-	background: linear-gradient(135deg, #00C853 0%, #00E676 100%);
+	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 	border: none;
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.3);
 }
 
 .message-item.user .message-content .message-text {
@@ -731,7 +859,7 @@ export default {
 
 .message-text {
 	font-size: 28rpx;
-	color: #212121;
+	color: var(--text-primary);
 	line-height: 1.6;
 	word-break: break-word;
 }
@@ -739,12 +867,12 @@ export default {
 .token-info {
 	margin-top: 12rpx;
 	padding-top: 12rpx;
-	border-top: 1rpx solid #EEEEEE;
+	border-top: 1rpx solid rgba(0, 0, 0, 0.05);
 }
 
 .token-info text {
 	font-size: 20rpx;
-	color: #9E9E9E;
+	color: var(--text-light);
 }
 
 .typing-indicator {
@@ -757,7 +885,7 @@ export default {
 .typing-indicator .dot {
 	width: 12rpx;
 	height: 12rpx;
-	background: #00C853;
+	background: var(--primary-color);
 	border-radius: 50%;
 	animation: typing 1.4s infinite ease-in-out both;
 }
@@ -786,32 +914,41 @@ export default {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	background: #FFFFFF;
+	background: rgba(255, 255, 255, 0.95);
+	backdrop-filter: blur(20rpx);
 	padding: 20rpx 24rpx;
 	padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-	border-top: 1rpx solid #E0E0E0;
+	border-top: 1rpx solid rgba(0, 0, 0, 0.05);
 	z-index: 10;
+	box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.05);
 }
 
 .input-wrapper {
 	display: flex;
 	align-items: center;
-	background: #F5F7FA;
+	background: rgba(245, 247, 250, 0.9);
+	backdrop-filter: blur(10rpx);
 	border-radius: 40rpx;
 	padding: 8rpx 8rpx 8rpx 28rpx;
-	border: 1rpx solid #E0E0E0;
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
+	transition: all 0.3s ease;
+}
+
+.input-wrapper:focus-within {
+	border-color: var(--primary-color);
+	box-shadow: 0 0 0 4rpx rgba(0, 230, 118, 0.1);
 }
 
 .chat-input {
 	flex: 1;
 	font-size: 28rpx;
-	color: #212121;
+	color: var(--text-primary);
 	background: transparent;
 	height: 72rpx;
 }
 
 .chat-input::placeholder {
-	color: #9E9E9E;
+	color: var(--text-light);
 }
 
 .send-btn {
@@ -821,25 +958,37 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background: #E0E0E0;
-	color: #9E9E9E;
-	transition: all 0.2s ease;
+	background: rgba(0, 0, 0, 0.05);
+	color: var(--text-light);
+	transition: all 0.3s ease;
+	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.send-btn:hover {
+	transform: scale(1.05);
 }
 
 .send-btn.active {
-	background: linear-gradient(135deg, #00C853 0%, #00E676 100%);
+	background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 	color: white;
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.3);
 }
 
 .send-btn.active:active {
 	transform: scale(0.92);
 }
 
+.send-icon {
+	font-size: 28rpx;
+	font-weight: 600;
+	transform: rotate(45deg);
+}
+
 .input-hint {
 	display: block;
 	text-align: center;
 	font-size: 20rpx;
-	color: #BDBDBD;
+	color: var(--text-light);
 	margin-top: 12rpx;
 }
 </style>
