@@ -134,7 +134,7 @@ async function chatViaServer(messages, token) {
 			},
 			success: (res) => {
 				if (res.statusCode === 401) {
-					reject(new Error('登录已过期，请重新登录'))
+					reject(new Error('认证失败，请检查登录状态'))
 					return
 				}
 				if (res.statusCode === 200 && res.data.code === 200) {

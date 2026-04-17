@@ -58,11 +58,22 @@
             /* SDK配置 */
             "sdkConfigs" : {
                 "geolocation" : {
+                    "amap" : {
+                        "__platform__" : [ "ios", "android" ],
+                        "appkey_ios" : "72e42cb33f0670c6739cb6d7b8a0d422",
+                        "appkey_android" : "72e42cb33f0670c6739cb6d7b8a0d422"
+                    },
                     "system" : {
                         "__platform__" : [ "ios", "android" ]
                     }
                 },
-                "maps" : {},
+                "maps" : {
+                    "amap" : {
+                        "__platform__" : [ "ios", "android" ],
+                        "appkey_ios" : "72e42cb33f0670c6739cb6d7b8a0d422",
+                        "appkey_android" : "72e42cb33f0670c6739cb6d7b8a0d422"
+                    }
+                },
                 "oauth" : {}
             },
             "splashscreen" : {
@@ -116,6 +127,25 @@
             "urlCheck" : false
         },
         "usingComponents" : true
+    },
+    "h5" : {
+        "devServer" : {
+            "port" : 8080,
+            "disableHostCheck" : true
+        },
+        "sdkConfigs" : {
+                "maps" : {
+                    "amap" : {
+                        "key" : "34573ca4e87b1a0341c82b41f8371dcc",
+                        "securityJsCode" : "",
+                        "serviceHost" : ""
+                    }
+                }
+            },
+        "router" : {
+            "mode" : "hash"
+        },
+        "title" : "智慧农业"
     },
     "mp-alipay" : {
         "usingComponents" : true

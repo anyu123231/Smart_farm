@@ -164,16 +164,9 @@ export default {
 					
 					if (res.data && res.data.code === 401) {
 						uni.showToast({
-							title: '登录已过期，请重新登录',
+							title: '认证失败，请检查登录状态',
 							icon: 'none'
 						})
-						uni.removeStorageSync('token')
-						uni.removeStorageSync('userInfo')
-						setTimeout(() => {
-							uni.navigateTo({
-								url: '/pages/index/login'
-							})
-						}, 1500)
 						return
 					}
 					

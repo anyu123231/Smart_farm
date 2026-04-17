@@ -28,7 +28,7 @@ const dbConfig = {
 const pool = mysql.createPool(dbConfig)
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key'
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '365d'
 
 const tcbApp = cloudbase.init({
 	env: process.env.CLOUDBASE_ENV_ID || 'valvecontrol-6gosonkm966694e0',

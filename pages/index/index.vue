@@ -72,11 +72,68 @@
 					</view>
 				</view>
 			</view>
+			
+			<view class="map-card" :class="{ 'map-fullscreen': mapFullscreen }">
+				<view class="map-header">
+					<view class="map-title-wrapper">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00E676" stroke-width="2">
+							<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+							<line x1="8" y1="2" x2="8" y2="18"/>
+							<line x1="16" y1="6" x2="16" y2="22"/>
+						</svg>
+						<text class="map-title">位置地图</text>
+					</view>
+					<view class="map-actions">
+						<view class="map-type-selector">
+							<view class="map-type-btn" :class="{ active: mapType === 'normal' }" @click.stop="switchMapType('normal')">
+								<text class="map-type-btn-text">普通</text>
+							</view>
+							<view class="map-type-btn" :class="{ active: mapType === 'satellite' }" @click.stop="switchMapType('satellite')">
+								<text class="map-type-btn-text">卫星</text>
+							</view>
+							<view class="map-type-btn" :class="{ active: mapType === 'traffic' }" @click.stop="switchMapType('traffic')">
+								<text class="map-type-btn-text">交通</text>
+							</view>
+						</view>
+						<view class="map-locate-btn" @click.stop="relocateMap">
+							<text class="map-btn-icon">⌖</text>
+						</view>
+						<view class="map-fullscreen-btn" @click.stop="toggleFullscreen">
+							<text class="map-btn-icon" v-if="!mapFullscreen">⛶</text>
+							<text class="map-btn-icon" v-else>⛶</text>
+						</view>
+					</view>
+				</view>
+				<view class="map-container">
+					<!-- #ifdef H5 -->
+					<view id="amap-container" class="amap-h5" :style="{ display: mapFullscreen ? 'block' : 'block' }"></view>
+					<!-- #endif -->
+					<!-- #ifdef APP-PLUS -->
+					<map
+					id="amap"
+					class="amap"
+					:longitude="mapLongitude"
+					:latitude="mapLatitude"
+					:scale="15"
+					:show-location="true"
+					:enable-zoom="true"
+					:enable-scroll="true"
+					:enable-rotate="false"
+					:markers="mapMarkers"
+					@markertap="onMarkerTap"
+					@updated="onMapUpdated"
+				></map>
+				<!-- #endif -->
+					<view class="map-loading" v-if="mapLoading">
+						<text>地图加载中...</text>
+					</view>
+				</view>
+			</view>
 		</view>
 		
 		
 		<view class="quick-actions">
-			<view class="action-card">
+			<view class="action-card" @click="goToDeviceList">
 				<view class="action-icon">
 					<view class="icon-wrapper device-icon"></view>
 				</view>
@@ -160,11 +217,57 @@
 				weatherNow: null,
 				forecast: [],
 				airQuality: null,
-				updateTime: ''
+				updateTime: '',
+				mapLongitude: 116.397428,
+				mapLatitude: 39.90923,
+				mapLoading: true,
+				mapMarkers: [],
+				mapType: 'normal',
+				showTraffic: false,
+				mapFullscreen: false,
+				amapInstance: null,
+				satelliteLayer: null,
+				trafficLayer: null,
+				amapMarker: null,
+				appMapReady: false,
+				trafficLayerInstance: null
 			}
+		},
+		computed: {
 		},
 		onLoad() {
 			this.initWeather()
+		},
+		mounted() {
+			// #ifdef H5
+			this.initAmap()
+			// #endif
+		},
+		onShow() {
+			// #ifdef H5
+			// 添加ESC键监听退出全屏（仅H5端）
+			document.addEventListener('keydown', this.handleKeyDown)
+			// 重新调整地图大小
+			this.$nextTick(() => {
+				if (this.amapInstance) {
+					this.amapInstance.resize()
+				}
+			})
+			// #endif
+			// 每次进入首页自动获取位置
+			this.getLocation()
+		},
+		onHide() {
+			// #ifdef H5
+			// 移除ESC键监听（仅H5端）
+			document.removeEventListener('keydown', this.handleKeyDown)
+			// #endif
+		},
+		onUnload() {
+			// #ifdef H5
+			// 页面卸载时移除ESC键监听（仅H5端）
+			document.removeEventListener('keydown', this.handleKeyDown)
+			// #endif
 		},
 		methods: {
 			async initWeather() {
@@ -184,7 +287,9 @@
 				try {
 					const position = await new Promise((resolve, reject) => {
 						uni.getLocation({
-							type: 'wgs84',
+							type: 'gcj02',
+							isHighAccuracy: true,
+							altitude: true,
 							geocode: true,
 							success: resolve,
 							fail: reject
@@ -192,11 +297,26 @@
 					})
 					
 					const location = `${position.longitude},${position.latitude}`
+					
+					this.mapLongitude = position.longitude
+					this.mapLatitude = position.latitude
+					this.mapLoading = false
+					this.updateMapMarker()
+					
+					// #ifdef H5
+					if (this.amapInstance) {
+						this.amapInstance.setCenter([position.longitude, position.latitude])
+						this.amapInstance.setZoom(15)
+						this.updateAmapMarker(position.longitude, position.latitude)
+					}
+					// #endif
+					
 					await this.getLocationId(location)
 				} catch (error) {
 					console.error('定位失败:', error)
 					this.cityName = '点击选择城市'
 					this.loading = false
+					this.mapLoading = false
 				}
 			},
 			
@@ -312,6 +432,12 @@
 				})
 			},
 			
+			goToDeviceList() {
+				uni.switchTab({
+					url: '/pages/index/devices'
+				})
+			},
+			
 			scanQRCode() {
 				uni.scanCode({
 					success: (res) => {
@@ -375,6 +501,213 @@
 				} catch (err) {
 					console.error('解析设备信息失败:', err)
 					return null
+				}
+			},
+			
+			updateMapMarker() {
+				this.mapMarkers = [{
+					id: 1,
+					latitude: this.mapLatitude,
+					longitude: this.mapLongitude,
+					title: this.cityName || '当前位置',
+					iconPath: '/static/logo.png',
+					width: 30,
+					height: 30,
+					callout: {
+						content: this.cityName || '当前位置',
+						display: 'ALWAYS',
+						padding: 10,
+						borderRadius: 5,
+						bgColor: '#FFFFFF',
+						color: '#333333',
+						fontSize: 14,
+						textAlign: 'center'
+					}
+				}]
+			},
+			
+			relocateMap() {
+				this.mapLoading = true
+				uni.getLocation({
+					type: 'gcj02',
+					isHighAccuracy: true,
+					success: (res) => {
+						this.mapLongitude = res.longitude
+						this.mapLatitude = res.latitude
+						this.mapLoading = false
+						this.updateMapMarker()
+						
+						// #ifdef H5
+						if (this.amapInstance) {
+							this.amapInstance.setCenter([res.longitude, res.latitude])
+							this.amapInstance.setZoom(15)
+							this.updateAmapMarker(res.longitude, res.latitude)
+						}
+						// #endif
+						
+						uni.showToast({
+							title: '定位成功',
+							icon: 'success'
+						})
+					},
+					fail: (err) => {
+						console.error('重新定位失败:', err)
+						this.mapLoading = false
+						uni.showToast({
+							title: '定位失败',
+							icon: 'none'
+						})
+					}
+				})
+			},
+			
+			onMarkerTap() {
+				uni.showToast({
+					title: this.cityName || '当前位置',
+					icon: 'none'
+				})
+			},
+			
+			switchMapType(type) {
+				if (this.mapType === type) return
+				
+				this.mapType = type
+				
+				const typeNames = {
+					normal: '普通地图',
+					satellite: '卫星地图',
+					traffic: '交通地图'
+				}
+				
+				// #ifdef H5
+				this.switchAmapLayer(type)
+				// #endif
+				
+				// #ifdef APP-PLUS
+				this.switchAppMapLayer(type)
+				// #endif
+				
+				uni.showToast({
+					title: `已切换到${typeNames[type]}`,
+					icon: 'none'
+				})
+			},
+			
+			// #ifdef APP-PLUS
+			switchAppMapLayer(type) {
+				const doSwitch = () => {
+					const mapContext = uni.createMapContext('amap', this)
+					const nativeMap = mapContext.$getAppMap()
+					
+					if (!nativeMap) {
+						console.log('原生地图对象未就绪，重试中...')
+						setTimeout(doSwitch, 300)
+						return
+					}
+					
+					const map = nativeMap
+					
+					if (type === 'satellite') {
+						map.setMapType(plus.maps.MapType.MAPTYPE_SATELLITE)
+						console.log('已切换到卫星地图')
+					} else if (type === 'traffic') {
+						map.setMapType(plus.maps.MapType.MAPTYPE_NORMAL)
+						map.setTraffic(true)
+						console.log('已切换到交通地图')
+					} else {
+						map.setMapType(plus.maps.MapType.MAPTYPE_NORMAL)
+						map.setTraffic(false)
+						console.log('已切换到普通地图')
+					}
+				}
+				
+				doSwitch()
+			},
+			// #endif
+			
+			// #ifdef H5
+			initAmap() {
+				this.$nextTick(() => {
+					const container = document.getElementById('amap-container')
+					if (!container || typeof AMap === 'undefined') {
+						setTimeout(() => this.initAmap(), 500)
+						return
+					}
+					
+					this.amapInstance = new AMap.Map('amap-container', {
+						center: [this.mapLongitude, this.mapLatitude],
+						zoom: 15,
+						resizeEnable: true
+					})
+					
+					this.satelliteLayer = new AMap.TileLayer.Satellite()
+					this.trafficLayer = new AMap.TileLayer.Traffic()
+					
+					this.amapInstance.on('click', (e) => {
+						uni.showToast({
+							title: `${e.lnglat.lng.toFixed(6)}, ${e.lnglat.lat.toFixed(6)}`,
+							icon: 'none'
+						})
+					})
+					
+					// 如果已有定位数据，添加标记
+					if (this.mapLongitude !== 116.397428 || this.mapLatitude !== 39.90923) {
+						this.updateAmapMarker(this.mapLongitude, this.mapLatitude)
+					}
+					
+					this.mapLoading = false
+				})
+			},
+			
+			updateAmapMarker(lng, lat) {
+				if (!this.amapInstance) return
+				
+				if (this.amapMarker) {
+					this.amapInstance.remove(this.amapMarker)
+				}
+				
+				this.amapMarker = new AMap.Marker({
+					position: [lng, lat],
+					title: this.cityName || '当前位置',
+					content: `<div style="width:24px;height:24px;background:#00E676;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);"></div>`
+				})
+				
+				this.amapInstance.add(this.amapMarker)
+			},
+			
+			switchAmapLayer(type) {
+				if (!this.amapInstance) return
+				
+				this.amapInstance.remove(this.satelliteLayer)
+				this.amapInstance.remove(this.trafficLayer)
+				
+				if (type === 'satellite') {
+					this.amapInstance.add(this.satelliteLayer)
+				} else if (type === 'traffic') {
+					this.amapInstance.add(this.trafficLayer)
+				}
+			},
+			// #endif
+			
+			toggleFullscreen() {
+				this.mapFullscreen = !this.mapFullscreen
+				
+				if (this.mapFullscreen) {
+					uni.showToast({
+						title: '全屏模式',
+						icon: 'none'
+					})
+				} else {
+					uni.showToast({
+						title: '退出全屏',
+						icon: 'none'
+					})
+				}
+			},
+			
+			handleKeyDown(e) {
+				if (e.key === 'Escape' && this.mapFullscreen) {
+					this.toggleFullscreen()
 				}
 			}
 		}
@@ -462,7 +795,7 @@
 	display: flex;
 	justify-content: flex-end;
 	position: relative;
-	z-index: 2;
+	z-index: 0;
 }
 
 .scan-button {
@@ -478,6 +811,7 @@
 	box-shadow: var(--shadow-sm);
 	backdrop-filter: blur(10rpx);
 	cursor: pointer;
+	z-index: 0;
 }
 
 .scan-button:hover {
@@ -717,6 +1051,241 @@
 	font-weight: 500;
 }
 
+.map-card {
+	margin-top: 28rpx;
+	background: rgba(255, 255, 255, 0.95);
+	border-radius: var(--border-radius);
+	padding: 0;
+	box-shadow: var(--shadow-md);
+	backdrop-filter: blur(20rpx);
+	overflow: hidden;
+	border: 1rpx solid rgba(0, 0, 0, 0.05);
+	animation: fadeInUp 1.4s ease-out 0.8s both;
+}
+
+.map-header {
+	padding: 24rpx 28rpx;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.map-actions {
+	display: flex;
+	align-items: center;
+	gap: 16rpx;
+	position: relative;
+	z-index: 10001;
+	pointer-events: auto;
+}
+
+.map-type-selector {
+	display: flex;
+	align-items: center;
+	gap: 8rpx;
+	padding: 6rpx;
+	background: rgba(0, 0, 0, 0.04);
+	border-radius: 12rpx;
+}
+
+.map-type-btn {
+	padding: 10rpx 18rpx;
+	border-radius: 8rpx;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+}
+
+.map-type-btn.active {
+	background: rgba(0, 230, 118, 0.15);
+	box-shadow: 0 2rpx 8rpx rgba(0, 230, 118, 0.2);
+}
+
+.map-type-btn:hover {
+	background: rgba(0, 0, 0, 0.06);
+}
+
+.map-type-btn.active:hover {
+	background: rgba(0, 230, 118, 0.25);
+}
+
+.map-type-btn-text {
+	font-size: 20rpx;
+	color: var(--text-secondary);
+	font-weight: 500;
+}
+
+.map-type-btn.active .map-type-btn-text {
+	color: var(--primary-color);
+	font-weight: 600;
+}
+
+.map-title-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12rpx;
+}
+
+.map-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.map-locate-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 14rpx;
+	background: rgba(0, 230, 118, 0.08);
+	border-radius: 12rpx;
+	border: 1rpx solid rgba(0, 230, 118, 0.2);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+}
+
+.map-locate-btn:hover {
+	background: rgba(0, 230, 118, 0.15);
+	transform: translateY(-2rpx);
+	box-shadow: 0 4rpx 16rpx rgba(0, 230, 118, 0.15);
+}
+
+.map-locate-btn:active {
+	background: rgba(0, 230, 118, 0.2);
+	transform: scale(0.95);
+}
+
+.map-fullscreen-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 14rpx;
+	background: rgba(0, 176, 255, 0.08);
+	border-radius: 12rpx;
+	border: 1rpx solid rgba(0, 176, 255, 0.2);
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+}
+
+.map-fullscreen-btn:hover {
+	background: rgba(0, 176, 255, 0.15);
+	transform: translateY(-2rpx);
+	box-shadow: 0 4rpx 16rpx rgba(0, 176, 255, 0.15);
+}
+
+.map-fullscreen-btn:active {
+	background: rgba(0, 176, 255, 0.2);
+	transform: scale(0.95);
+}
+
+.map-btn-icon {
+	font-size: 36rpx;
+	color: var(--primary-color);
+	font-weight: bold;
+	line-height: 1;
+}
+
+.map-container {
+	position: relative;
+	width: 100%;
+	height: 400rpx;
+}
+
+.map-fullscreen {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+	z-index: 999999 !important;
+	margin: 0 !important;
+	border-radius: 0 !important;
+	width: 100vw !important;
+	height: 100vh !important;
+	max-height: 100vh !important;
+	overflow: hidden !important;
+	animation: none !important;
+	display: flex !important;
+	flex-direction: column !important;
+	background: #ffffff;
+}
+
+.map-fullscreen .map-header {
+	padding: 16rpx 35rpx !important;
+	/* #ifdef H5 */
+	padding-top: 80rpx !important;
+	/* #endif */
+	/* #ifdef APP-PLUS */
+	padding-top: 16rpx !important;
+	/* #endif */
+	background: rgba(255, 255, 255, 0.98) !important;
+	backdrop-filter: blur(20rpx);
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
+	z-index: 1000000 !important;
+	position: sticky !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	display: flex !important;
+	justify-content: space-between !important;
+	align-items: center !important;
+	min-height: 80rpx !important;
+	flex-shrink: 0 !important;
+}
+
+.map-fullscreen .map-container {
+	flex: 1 !important;
+	height: auto !important;
+	max-height: none !important;
+	position: relative !important;
+	overflow: hidden;
+}
+
+.map-fullscreen .map-actions {
+	gap: 12rpx;
+	z-index: 1000001 !important;
+	pointer-events: auto;
+}
+
+.map-fullscreen .map-type-selector {
+	gap: 6rpx;
+}
+
+.map-fullscreen .map-type-btn {
+	padding: 8rpx 14rpx;
+}
+
+.map-fullscreen .map-type-btn-text {
+	font-size: 18rpx;
+}
+
+.amap {
+	width: 100%;
+	height: 100%;
+}
+
+/* #ifdef H5 */
+.amap-h5 {
+	width: 100%;
+	height: 400rpx;
+}
+/* #endif */
+
+.map-loading {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: rgba(255, 255, 255, 0.8);
+	backdrop-filter: blur(10rpx);
+	font-size: 26rpx;
+	color: var(--text-secondary);
+}
+
 /* 英雄区域 */
 .hero-section {
 	padding: 40rpx 30rpx;
@@ -788,7 +1357,7 @@
 	grid-template-columns: repeat(2, 1fr);
 	gap: 24rpx;
 	position: relative;
-	z-index: 1;
+	z-index: 0;
 	animation: fadeInUp 1.6s ease-out 1s both;
 }
 
@@ -1052,6 +1621,29 @@
 	.action-card {
 		padding: 32rpx 16rpx;
 	}
+	
+	.map-header {
+		flex-wrap: wrap;
+		gap: 16rpx;
+	}
+	
+	.map-actions {
+		width: 100%;
+		justify-content: space-between;
+	}
+	
+	.map-type-selector {
+		flex: 1;
+		justify-content: center;
+	}
+	
+	.map-type-btn {
+		padding: 8rpx 14rpx;
+	}
+	
+	.map-type-btn-text {
+		font-size: 18rpx;
+	}
 }
 
 /* 状态栏 */
@@ -1067,7 +1659,7 @@
 	justify-content: center;
 	gap: 24rpx;
 	position: relative;
-	z-index: 1;
+	z-index: 0;
 	animation: fadeInUp 0.8s ease-out 1.2s both;
 }
 
@@ -1102,6 +1694,10 @@
 	}
 }
 
+.map-fullscreen .amap-h5 {
+	height: 100% !important;
+}
+
 .status-label {
 	font-size: 24rpx;
 	color: var(--text-secondary);
@@ -1134,6 +1730,58 @@
 	.forecast-item {
 		background: rgba(45, 55, 72, 0.95);
 		border-color: rgba(255, 255, 255, 0.1);
+	}
+	
+	.map-card {
+		background: rgba(45, 55, 72, 0.95);
+		border-color: rgba(255, 255, 255, 0.1);
+	}
+	
+	.map-header {
+		border-bottom-color: rgba(255, 255, 255, 0.1);
+	}
+	
+	.map-title {
+		color: var(--text-primary);
+	}
+	
+	.map-locate-btn {
+		background: rgba(0, 230, 118, 0.15);
+		border-color: rgba(0, 230, 118, 0.3);
+	}
+	
+	.map-locate-btn:hover {
+		background: rgba(0, 230, 118, 0.25);
+	}
+	
+	.map-fullscreen-btn {
+		background: rgba(0, 176, 255, 0.15);
+		border-color: rgba(0, 176, 255, 0.3);
+	}
+	
+	.map-fullscreen-btn:hover {
+		background: rgba(0, 176, 255, 0.25);
+	}
+	
+	.map-type-selector {
+		background: rgba(255, 255, 255, 0.08);
+	}
+	
+	.map-type-btn:hover {
+		background: rgba(255, 255, 255, 0.12);
+	}
+	
+	.map-type-btn.active {
+		background: rgba(0, 230, 118, 0.25);
+	}
+	
+	.map-fullscreen .map-header {
+		background: rgba(45, 55, 72, 0.95);
+	}
+	
+	.map-loading {
+		background: rgba(45, 55, 72, 0.8);
+		color: var(--text-secondary);
 	}
 	
 	.scan-button {
